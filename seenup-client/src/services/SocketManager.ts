@@ -2,6 +2,7 @@
 
 import { Manager, Socket } from 'socket.io-client';
 import { authManager } from '.';
+import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 
 export interface SocketManagerContract {
     namespace: string;
@@ -67,6 +68,21 @@ export abstract class SocketManager implements SocketManagerContract {
         instance.subscribe();
         // Connect socket - if it was not used in subscribe, it will be created
         instance.socket.connect();
+
+        instance.socket.on('join_channel', (data: { channelId: number, channelName: string, isPrivate: boolean, userId: string }) => {
+            useChannelsStore().join(data.channelName, data.isPrivate);
+            console.log('Received join_channel event with:', data)
+        });
+
+        instance.socket.on('invited_to_channel', (data: { channelId: number, channelName: string, isPrivate: boolean, userId: string }) => {
+            
+            console.log('Received invited_to_channel event with:', data)
+        });
+
+
+        instance.socket.on('channel:deleted', (data: { channelId: string }) => {
+            console.log('Received channel:deleted event:', data)
+        });
     }
 
     private $socket: Socket | null = null;

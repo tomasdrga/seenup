@@ -13,14 +13,16 @@
                         :label="getDayStringSafe(message.createdAt)"
                         style="height: 1rem; padding-top: 0;"
                         class="text-deep-purple-4"/>
-        <message-component
-          :time="formatTime(new Date(message.createdAt))"
-          :message="message.content"
-          :user-name="message.author.email"
-          :profile-pic="items[0].profilePic"
-          :type="items[0].type"
-          :users="channel.users"
-        />
+        <span v-if="message.author">
+           <message-component
+              :time="formatTime(new Date(message.createdAt))"
+              :message="message.content"
+              :user-name="message.author.email"
+              :profile-pic="'/avatars/matko.jpg'"
+              :type="MessageType.user"
+              :users="channel.users"
+            />
+        </span>
       </template>
     </q-infinite-scroll>
     </div>

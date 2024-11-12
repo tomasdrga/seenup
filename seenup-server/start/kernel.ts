@@ -42,4 +42,20 @@ Server.middleware.register([
 */
 Server.middleware.registerNamed({
   auth: () => import("App/Middleware/Auth"),
+});
+
+/*
+|--------------------------------------------------------------------------
+| Commands
+|--------------------------------------------------------------------------
+|
+|
+*/
+import cron from 'node-cron'
+import ChannelCleanupService from 'App/Services/ChannelCleanupService'
+
+// Schedule the task to run every day at midnight
+cron.schedule('* * * * *', async () => {
+  console.log('Running daily channel cleanup task...')
+  await ChannelCleanupService.cleanupInactiveChannels()
 })

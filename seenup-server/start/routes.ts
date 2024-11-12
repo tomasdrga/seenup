@@ -25,6 +25,11 @@ Route.get('/', async () => {
   return { hello: 'world' }
 })
 
+Route.post('/channels', 'ChannelsController.create').middleware('auth')
+Route.get('/channels/:name/is-admin', 'ChannelsController.isAdmin').middleware('auth')
+Route.post('/channels/:name/leave', 'ChannelsController.leave').middleware('auth')
+Route.delete('/channels/:name', 'ChannelsController.delete').middleware('auth')
+
 Route.group(() => {
   Route.post('register', 'AuthController.register')
   Route.post('login', 'AuthController.login')

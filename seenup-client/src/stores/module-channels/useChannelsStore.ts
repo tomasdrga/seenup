@@ -2,11 +2,17 @@ import { defineStore } from 'pinia';
 import { SerializedMessage, RawMessage } from 'src/contracts';
 import channelService from 'src/services/ChannelService';
 
+export interface Channel {
+    name: string;
+    isPrivate: boolean;
+}
+
 export interface ChannelsStateInterface {
     loading: boolean;
     error: Error | null;
     messages: { [channel: string]: SerializedMessage[] };
     active: string | null;
+    channels: Channel[]; // Add channels array
 }
 
 export const useChannelsStore = defineStore('channels', {
@@ -15,11 +21,12 @@ export const useChannelsStore = defineStore('channels', {
         error: null,
         messages: {},
         active: null,
+        channels: [], // Initialize channels array
     }),
 
     getters: {
-        joinedChannels(state): string[] {
-            return Object.keys(state.messages);
+        joinedChannels(state): Channel[] {
+            return state.channels;
         },
         currentMessages(state): SerializedMessage[] {
             return state.active !== null ? state.messages[state.active] : [];
@@ -58,24 +65,28 @@ export const useChannelsStore = defineStore('channels', {
             }
             this.messages[channel].push(message);
         },
-        async join(channel: string) {
+        async join(channel: string, isPrivate: boolean) {
             console.log(`channelsStore.join called with channel: ${channel}`);
+            console.log(`channelsStore.join called with isPrivate: ${isPrivate}`);
             try {
                 this.LOADING_START();
                 const service = channelService.join(channel);
                 const messages = await service.loadMessages();
                 this.LOADING_SUCCESS(channel, messages);
+                // Add the channel to the channels array
+                this.channels.push({ name: channel, isPrivate: isPrivate });
             } catch (err) {
                 this.LOADING_ERROR(err as Error);
                 throw err;
             }
         },
         async leave(channel: string | null) {
-            const leaving: string[] = channel !== null ? [channel] : this.joinedChannels;
+            const leaving: string[] = channel !== null ? [channel] : this.joinedChannels.map(c => c.name);
 
             leaving.forEach((c) => {
                 channelService.leave(c);
                 this.CLEAR_CHANNEL(c);
+                this.channels = this.channels.filter(ch => ch.name !== c);
             });
         },
         async addMessage(channel: string, message: RawMessage) {

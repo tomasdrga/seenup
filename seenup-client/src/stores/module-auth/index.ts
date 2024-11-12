@@ -27,7 +27,8 @@ export const useAuthStore = defineStore('auth', {
                 if (user?.id !== this.user?.id) {
                     try {
                         const channelsStore = useChannelsStore();
-                        await channelsStore.join('general');
+                        await channelsStore.join('general', false);
+
                         console.log('Joined general channel');
                     } catch (joinError) {
                         console.error('Error joining general channel:', joinError);
