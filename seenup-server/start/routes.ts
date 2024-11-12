@@ -30,7 +30,10 @@ Route.group(() => {
   Route.post('login', 'AuthController.login')
   Route.post('logout', 'AuthController.logout').middleware('auth')
   Route.get('me', 'AuthController.me').middleware('auth')
+  Route.post('change-status', 'UserController.changeStatus').middleware('auth')
+  Route.get('users', 'UserController.getUsers').middleware('auth')
 }).prefix('auth')
+
 
 Ws.namespace("channels/:name")
   // .middleware('channel') // check if user can join given channel
