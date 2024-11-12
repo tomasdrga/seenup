@@ -1,6 +1,6 @@
 <template>
   <!-- User Message -->
-  <div v-if="type === MessageType.user" class="row no-wrap q-pl-md q-py-md" id="message">
+  <div v-if="type === MessageType.user && !isUserMentioned" class="row no-wrap q-pl-md q-py-md" id="message">
     <div class="q-pr-md">
       <q-avatar rounded class="q-mt-xs relative-position">
         <img :src="profilePic" alt="Profile Pic" />
@@ -37,12 +37,53 @@
       </div>
     </div>
   </div>
+
+  <div v-if="isUserMentioned" class="row no-wrap q-pl-md q-py-md bg-deep-purple-1" id="message">
+    <div class="q-pr-md">
+      <q-avatar rounded class="q-mt-xs relative-position">
+        <img :src="profilePic" alt="Profile Pic" />
+        <q-icon :name="userStatus.icon" :color="userStatus.color" class="custom-badge q-pa-none absolute" size="xs"/>
+      </q-avatar>
+    </div>
+    <div>
+      <div class="row items-center">
+        <span class="q-mr-md text-weight-bold text-body1 text-primary">{{ userName }}</span>
+        <div class="text-primary text-deep-purple-4">{{ time }}</div>
+      </div>
+      <div v-html="processedMessage" class="text-message text-primary"></div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-  import { computed, PropType } from 'vue';
+import {computed, onMounted, PropType, ref} from 'vue';
 
   import { MessageType, User } from 'components/models';
+  import { useAuthStore } from 'stores/module-auth';
+  import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
+  import {api} from 'boot/axios';
+
+  const channelsStore = useChannelsStore();
+  const activeChannel = computed(() => channelsStore.active);
+
+  const nicknames = ref<string[]>([]);
+  const usersNew = async () => {
+    try {
+      const response = await api.get('/auth/users', { params: { channel: activeChannel.value } });
+      for (let i = 0; i < response.data.length; i++) {
+        nicknames.value.push(response.data[i].nickname);
+      }
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
+  };
+
+  onMounted(() => {
+    usersNew();
+  });
+
+  const authStore = useAuthStore();
+  const user = computed(() => authStore.user);
 
   const props = defineProps({
       userName: {
@@ -61,6 +102,10 @@
         type: String,
         required: true
       },
+      userStatus:{
+        type: String,
+        required: true
+      },
       type: {
         type: String as PropType<MessageType>,
         required: true
@@ -72,29 +117,35 @@
   });
 
   const processedMessage = computed(() => {
-    return props.message.replace(/@(\S+\s?\S*)(?=\s|$)/g, function(_: string, matchedUsername: string) {
-      const username = matchedUsername.trim(); // Remove trailing and leading whitespaces
+    return props.message.replace(/@(\S+)(?=\s|$)/g, function(_: string, matchedUsername: string) {
+      const username = matchedUsername.trim();
 
-      const userExists = props.users.some((user: User) => user.userName.localeCompare(username, undefined, {sensitivity: 'base'}) === 0);
+      const userExists = nicknames.value.some((nickname: string) => nickname.localeCompare(username, undefined, { sensitivity: 'base' }) === 0);
       return userExists ? `<mark>@${username}</mark>` : `@${username}`;
     });
   });
 
-  const userStatus = computed(() => {
-    const user = props.users.find((user: User) => user.userName === props.userName);
-    if (!user) return {icon: 'warning', color: 'red'};
+  const isUserMentioned = computed(() => {
+    if(user.value) {
+      const regex = new RegExp(`@${user.value?.nickname}\\b`, 'i');
+      return regex.test(props.message);
+    }
+    return false;
+  });
 
-    switch (user.status) {
-      case 'Active':
+  const userStatus = computed(() => {
+    switch (props.userStatus) {
+      case 'active':
         return {icon: 'radio_button_checked', color: 'green'};
-      case 'Offline':
+      case 'offline':
         return {icon: 'radio_button_checked', color: 'grey-6'};
-      case 'Do not disturb':
+      case 'dnd':
         return {icon: 'nightlight', color: 'primary'};
       default:
         return {icon: 'warning', color: 'red'};
     }
   });
+
 </script>
 
 <style>

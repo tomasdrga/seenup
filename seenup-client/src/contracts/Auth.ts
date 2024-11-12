@@ -7,6 +7,9 @@ export interface ApiToken {
 
 export interface RegisterData {
     email: string
+    nickname: string
+    first_name: string
+    last_name: string
     password: string
     passwordConfirmation: string
 }
@@ -20,6 +23,10 @@ export interface LoginCredentials {
 export interface User {
     id: number
     email: string
-    createdAt: string,
+    nickname: string
+    first_name: string
+    last_name: string
+    status: 'active' | 'offline' | 'dnd'
+    createdAt: string
     updatedAt: string
 }

@@ -167,6 +167,9 @@ export default defineComponent({
         try {
           await authStore.register({
             email: form.email,
+            nickname: form.name,
+            first_name: form.first_name,
+            last_name: form.last_name,
             password: form.password,
             passwordConfirmation: form.passwordConfirmation,
           });

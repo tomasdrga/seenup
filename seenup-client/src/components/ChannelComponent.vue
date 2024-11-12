@@ -16,10 +16,11 @@
         <message-component
           :time="formatTime(new Date(message.createdAt))"
           :message="message.content"
-          :user-name="message.author.email"
-          :profile-pic="items[0].profilePic"
-          :type="items[0].type"
-          :users="channel.users"
+          :user-name="message.author.nickname"
+          :user-status="message.author.status"
+          :profile-pic="'/avatars/matko.jpg'"
+          :type="MessageType.user"
+          :users="users"
         />
       </template>
     </q-infinite-scroll>
@@ -27,17 +28,17 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, ref, reactive, watch } from 'vue';
+import {computed, nextTick, ref, watch} from 'vue';
 
   import { useQuasar, QInfiniteScroll } from 'quasar';
 
-  import { v4 as uuidv4 } from 'uuid';
+
 
   import MessageComponent from 'components/MessageComponent.vue';
   import { allMessages } from 'assets/messages';
   import { users, system } from 'assets/users';
-  import { ChannelType, Message, MessageType, User, Channel, Server } from 'components/models';
-  import { formatTime, getDayStringSafe, scrollToBottom } from './channel-helpers';
+  import {  Message, MessageType, User, Channel, Server } from 'components/models';
+  import { formatTime ,getDayStringSafe, scrollToBottom } from './channel-helpers';
 
   import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 
@@ -56,7 +57,6 @@
   });
 
   const $q = useQuasar();
-  const rCurrentServer = reactive(props.currentServer);
   const infiniteScroll = ref<QInfiniteScroll | null>(null);
   const showInfiniteScroll = ref(false);
   const items = ref<Message[]>([]);
@@ -82,6 +82,14 @@
   watch(() => props.channel, () => {
     resetMessages();
   }, { immediate: true });
+
+    // Watch for channel
+  watch(() => props.channel, () => {
+    resetMessages();
+  }, { immediate: true });
+
+
+
 
   // Handling the load event in an infinite scroll
   const onLoad = (index: number, done: () => void) => {
@@ -125,16 +133,16 @@
       showSystemNotification('New message from SeenUpBot');
       return true
     } else if (messageClean.startsWith('/join')) {
-      const messageParts = messageClean.split(' ');
+      //const messageParts = messageClean.split(' ');
       // Create a new channel
-      rCurrentServer.channels.push({
-        id: rCurrentServer.channels.length + 1,
-        uuid: uuidv4(),
-        name: messageParts[1],
-        type: ChannelType.public,
-        users: [users.value[0]],
-        messages: allMessages.value,
-      });
+      // rCurrentServer.channels.push({
+      //   id: rCurrentServer.channels.length + 1,
+      //   uuid: uuidv4(),
+      //   name: messageParts[1],
+      //   type: ChannelType.public,
+      //   users: [users.value[0]],
+      //   messages: allMessages.value,
+      // });
       showSystemNotification('New channel created');
       return true
     }
