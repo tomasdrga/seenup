@@ -1,5 +1,17 @@
 {
   "commands": {
+    "delete:inactive_channels": {
+      "settings": {
+        "loadApp": true,
+        "stayAlive": false
+      },
+      "commandPath": "./commands/DeleteInactiveChannels",
+      "commandName": "delete:inactive_channels",
+      "description": "Delete channels inactive for over 30 days",
+      "args": [],
+      "aliases": [],
+      "flags": []
+    },
     "dump:rcfile": {
       "settings": {},
       "commandPath": "@adonisjs/core/build/commands/DumpRc",

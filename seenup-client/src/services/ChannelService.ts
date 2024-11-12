@@ -13,6 +13,10 @@ class ChannelSocketManager extends SocketManager {
         this.socket.on('message', (message: SerializedMessage) => {
             channelsStore.NEW_MESSAGE(channel, message);
         });
+
+        this.socket.on('channel:deleted', (data: { channelId: string }) => {
+            console.log('Received channel:deleted event:', data)
+        });
     }
 
     public addMessage(message: RawMessage): Promise<SerializedMessage> {

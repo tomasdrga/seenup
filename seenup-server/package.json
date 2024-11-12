@@ -21,6 +21,7 @@
     "youch-terminal": "^2.2.3"
   },
   "dependencies": {
+    "@adonisjs/ace": "^13.3.0",
     "@adonisjs/auth": "^8.2.3",
     "@adonisjs/core": "^5.9.0",
     "@adonisjs/lucid": "^18.4.0",
@@ -28,6 +29,7 @@
     "@ruby184/adonis-socket.io": "^0.2.0",
     "i": "^0.3.7",
     "luxon": "^3.5.0",
+    "node-cron": "^3.0.3",
     "npm": "^10.9.0",
     "pg": "^8.13.1",
     "phc-argon2": "^1.1.4",
