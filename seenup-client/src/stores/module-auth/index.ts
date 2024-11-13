@@ -45,7 +45,6 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-
         async register(form: RegisterData): Promise<User | null> {
             this.status = 'pending';
             this.errors = [];

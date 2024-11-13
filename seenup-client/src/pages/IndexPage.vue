@@ -117,13 +117,13 @@
         <q-card-section class="q-py-none dialog-tabs">
           <q-tabs align="left" v-model="selectedTab">
             <q-tab name="general">
-              <div class="row items-center"><q-icon name="settings" class="q-mr-xs gt-xs"/><span class="text-weight-bold">General</span></div> 
+              <div class="row items-center"><q-icon name="settings" class="q-mr-xs gt-xs"/><span class="text-weight-bold">General</span></div>
             </q-tab>
             <q-tab name="people">
-              <div class="row items-center"><q-icon name="people" class="q-mr-xs gt-xs"/><span class="text-weight-bold">People</span></div> 
+              <div class="row items-center"><q-icon name="people" class="q-mr-xs gt-xs"/><span class="text-weight-bold">People</span></div>
             </q-tab>
             <q-tab name="danger">
-              <div class="row items-center"><q-icon name="dangerous" class="q-mr-xs gt-xs"/><span class="text-weight-bold">Danger zone</span></div> 
+              <div class="row items-center"><q-icon name="dangerous" class="q-mr-xs gt-xs"/><span class="text-weight-bold">Danger zone</span></div>
             </q-tab>
           </q-tabs>
         </q-card-section>
@@ -474,7 +474,7 @@ export default defineComponent({
     z-index: 1000;
   }
 
-  body.platform-ios .q-dialog__inner--minimized > div, 
+  body.platform-ios .q-dialog__inner--minimized > div,
   body.platform-android:not(.native-mobile) .q-dialog__inner--minimized > div {
     min-height: 100vh;
   }

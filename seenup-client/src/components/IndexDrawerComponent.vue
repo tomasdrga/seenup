@@ -48,20 +48,20 @@
       </q-btn>
       <q-btn flat class="q-pa-none">
         <q-avatar rounded size="lg">
-          <img :src="user.profilePic" alt="Profile Pic" />
+          <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
         </q-avatar>
         <q-menu anchor="bottom right" self="bottom left" :offset="[10, 0]" class="q-pt-md text-primary">
           <q-list>
             <q-item clickable v-close-popup>
               <q-item-section class="col-3">
                 <q-avatar rounded size="lg">
-                  <img :src="user.profilePic" alt="Profile Pic" />
+                  <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
                 </q-avatar>
               </q-item-section>
               <q-item-section>
-                <q-item-label class="text-weight-bold text-no-wrap">{{ user.userName }}</q-item-label>
+                <q-item-label class="text-weight-bold text-no-wrap">{{ user?.firstName + ' ' + user?.lastName }}</q-item-label>
                 <q-item-label caption class="text-purple-4">
-                  <q-icon :name="userStatus.icon" :color="userStatus.color"></q-icon>{{ user.status }}
+                  <q-icon :name="userStatus.icon" :color="userStatus.color"></q-icon>{{ user?.status }}
                 </q-item-label>
               </q-item-section>
             </q-item>
@@ -72,21 +72,21 @@
               </q-item-section>
               <q-menu anchor="top end" self="top start" class="text-primary">
                 <q-list>
-                  <q-item dense clickable @click="$emit('change-status', 'Active')">
+                  <q-item dense clickable @click="changeStatus('active')">
                     <q-item-section>
                       <q-item-label>
                         <q-icon name="radio_button_checked" color="green" class="q-pr-sm"></q-icon>Active
                       </q-item-label>
                     </q-item-section>
                   </q-item>
-                  <q-item dense clickable @click="$emit('change-status', 'Do not disturb')">
+                  <q-item dense clickable @click="changeStatus('dnd')">
                     <q-item-section>
                       <q-item-label>
                         <q-icon name="nightlight" color="primary" class="q-pr-sm"></q-icon>Do not disturb
                       </q-item-label>
                     </q-item-section>
                   </q-item>
-                  <q-item dense clickable @click="$emit('change-status', 'Offline')">
+                  <q-item dense clickable @click="changeStatus('offline')">
                     <q-item-section>
                       <q-item-label>
                         <q-icon name="radio_button_unchecked" color="grey-6" class="q-pr-sm"></q-icon>Offline
@@ -101,8 +101,8 @@
               <q-item-section>Settings</q-item-section>
             </q-item>
             <q-separator />
-            <q-item clickable v-close-popup to="/login">
-              <q-item-section>Sign out</q-item-section>
+            <q-item clickable v-close-popup to="/login" @click="logout">
+              <q-item-section>Logout</q-item-section>
             </q-item>
           </q-list>
         </q-menu>
@@ -113,7 +113,9 @@
 
 <script lang="ts">
 import { defineComponent, computed } from 'vue';
-import { users } from 'assets/users';
+import { api } from 'boot/axios';
+
+import { useAuthStore } from 'stores/module-auth';
 
 export default defineComponent({
   props: {
@@ -124,15 +126,16 @@ export default defineComponent({
   },
   emits: ['open-new-channel-dialog', 'change-status', 'open-settings', 'update:leftDrawerOpen'],
   setup(props, { emit }) {
-    const user = users.value[0];
+    const authStore = useAuthStore();
+    const user = computed(() => authStore.user);
 
     const userStatus = computed(() => {
-      switch (user.status) {
-        case 'Active':
+      switch (user.value?.status) {
+        case 'active':
           return { icon: 'radio_button_checked', color: 'green' };
-        case 'Offline':
+        case 'offline':
           return { icon: 'radio_button_checked', color: 'grey-6' };
-        case 'Do not disturb':
+        case 'dnd':
           return { icon: 'nightlight', color: 'primary' };
         default:
           return { icon: 'mdi-account-question', color: 'grey' };
@@ -142,11 +145,26 @@ export default defineComponent({
     const updateLeftDrawerOpen = (value: boolean) => {
       emit('update:leftDrawerOpen', value);
     };
+    const logout = async () => {
+      await authStore.logout();
+    };
+    const changeStatus = async (status: 'active' | 'offline' | 'dnd') => {
+      try {
+        await api.post('/auth/change-status', { status });
+        if (user.value) {
+          user.value.status = status;
+        }
+      } catch (error) {
+      console.error('Failed to change status:', error);
+      }
+    };
 
     return {
       user,
       userStatus,
-      updateLeftDrawerOpen
+      updateLeftDrawerOpen,
+      changeStatus,
+      logout
     };
   },
 });
