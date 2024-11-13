@@ -5,9 +5,9 @@ export default class extends BaseSchema {
 
   public async up () {
     this.schema.alterTable(this.tableName, (table) => {
-      table.string("nickname").notNullable().unique();
-      table.string("first_name").notNullable();
-      table.string("last_name").notNullable();
+      table.string("nickname").unique();
+      table.string("first_name")
+      table.string("last_name")
       table.enum('status', ['active', 'offline', 'dnd']).notNullable().defaultTo('offline')
     })
   }

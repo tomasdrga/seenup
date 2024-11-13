@@ -13,7 +13,7 @@ import type { ProfilerConfig } from '@ioc:Adonis/Core/Profiler'
 import type { ValidatorConfig } from '@ioc:Adonis/Core/Validator'
 
 /*
-|--------------------------------------------------------------------------
+|------------------------------------------------------\--------------------
 | Application secret key
 |--------------------------------------------------------------------------
 |

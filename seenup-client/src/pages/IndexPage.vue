@@ -21,9 +21,10 @@
                 :class="{ 'text-weight-bold': index === 0 }"
                 clickable
                 v-ripple
-                @click="setActiveChannel(channel)">
-                  <!-- <q-icon :name="channel.type === 'public' ? 'tag' : 'lock'" size="xs" /> -->
-                  <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': index === 0 || index === 2}">{{ channel }}</span>
+                @click="setActiveChannel(channel.name)">
+
+                  <q-icon :name="channel.isPrivate ? 'lock' : 'tag'" size="xs" />
+                  <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': index === 0 || index === 2}">{{ channel.name }}</span>
                   <q-icon v-if="index === 0" name="star" size="xs"/>
                   <q-btn flat icon="more_vert" class="edit-icon q-pa-none" size="xs" @click="icon = true" />
                 </q-btn>
@@ -50,12 +51,13 @@
                 :class="{ 'text-weight-bold': index === 0 }"
                 clickable
                 v-ripple
-                @click="setActiveChannel(channel)">
+                @click="setActiveChannel(channel.name)">
 
-<!--                 <q-icon :name="channel.type === 'public' ? 'tag' : 'lock'" size="xs" />
- -->                <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': index === 0 || index === 2}">{{ channel }}</span>
+                <q-icon :name="channel.isPrivate ? 'lock' : 'tag'" size="xs" />
+                <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': index === 0 || index === 2}">{{ channel.name }}</span>
                 <q-icon v-if="index === 0" name="star" size="xs"/>
                 <q-btn flat icon="more_vert" class="edit-icon q-pa-none" size="xs" @click="icon = true" />
+                <q-btn flat icon="close" class="leave-icon q-pa-none" size="xs" @click="leaveChannel(channel)" />
               </q-btn>
             </q-expansion-item>
           </q-list>
@@ -233,6 +235,7 @@ import CommandLineComponent from 'components/CommandLineComponent.vue';
 import ChannelComponent from 'src/components/ChannelComponent.vue';
 import { useServerStore } from '../stores/serverStore';
 import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
+import { api } from 'src/boot/axios';
 
 // Define the interface for the component instance
 interface ChannelComponentInstance extends ComponentPublicInstance {
@@ -259,6 +262,7 @@ export default defineComponent({
 
     // Computed properties
     const channels = computed(() => channelsStore.joinedChannels);
+    console.log(channels);
     const lastMessageOf = (channel: string) => channelsStore.lastMessageOf(channel);
     const activeChannel = computed(() => channelsStore.active);
 
@@ -321,6 +325,43 @@ export default defineComponent({
       model.value = null;
     };
 
+    const leaveChannel = async (channel: { name: string, isPrivate: boolean }) => {
+      try {
+        // Check if the user is an admin
+        const isAdmin = await api.get(`/channels/${channel.name}/is-admin`);
+        if (isAdmin.data) {
+          // Admin leaves and deletes the channel
+          await api.delete(`/channels/${channel.name}`);
+          $q.notify({
+            color: 'grey',
+            textColor: 'primary',
+            icon: 'done',
+            message: 'Channel deleted successfully',
+            position: 'top',
+          });
+        } else {
+          // User leaves the channel
+          await api.post(`/channels/${channel.name}/leave`);
+          $q.notify({
+            color: 'grey',
+            textColor: 'primary',
+            icon: 'done',
+            message: 'Left the channel successfully',
+            position: 'top',
+          });
+        }
+        channelsStore.leave(channel.name);
+      } catch (error) {
+        $q.notify({
+          color: 'red',
+          textColor: 'white',
+          icon: 'error',
+          message: 'Failed to leave the channel',
+          position: 'top',
+        });
+      }
+    };
+
     return {
       handleSendMessage,
       channelComponent,
@@ -339,6 +380,7 @@ export default defineComponent({
       lastMessageOf,
       activeChannel,
       setActiveChannel,
+      leaveChannel,
     };
   },
 });
@@ -363,7 +405,18 @@ export default defineComponent({
     transition: opacity 0.3s;
   }
 
+  .leave-icon {
+    position: absolute;
+    right: 25px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
   .channel-item:hover .edit-icon {
+    opacity: 1;
+  }
+
+  .channel-item:hover .leave-icon {
     opacity: 1;
   }
 

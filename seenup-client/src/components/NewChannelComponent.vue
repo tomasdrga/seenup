@@ -51,9 +51,8 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { useQuasar } from 'quasar';
-import { useServerStore } from 'src/stores/serverStore';
-import { ChannelType } from 'components/models';
-import { v4 as uuidv4 } from 'uuid';
+import { api } from 'src/boot/axios';
+import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 
 export default defineComponent({
   props: {
@@ -67,37 +66,42 @@ export default defineComponent({
     const $q = useQuasar();
     const name = ref<string | null>(null);
     const typeChannel = ref<string | null>(null);
+    const channelsStore = useChannelsStore();
 
-    const serverStore = useServerStore();
 
-    const onSubmitChannel = () => {
-      let type = ChannelType.public;
-      if (typeChannel.value === 'Public') {
-        type = ChannelType.public;
-      } else {
-        type = ChannelType.private;
-      }
+    const onSubmitChannel = async () => {
+      const isPrivate = typeChannel.value === 'Private';
+
       if (typeChannel.value && name.value) {
-        const newChannel = {
-          id: Date.now(),
-          uuid: uuidv4(),
-          type: type,
-          name: name.value,
-          users: [],
-          messages: []
-        };
+        try {
+          const response = await api.post('/channels', {
+            name: name.value,
+            isPrivate,
+          });
 
-        serverStore.addChannelToServer(1, newChannel);
-        emit('update:newChannelDialog', false);
+          emit('update:newChannelDialog', false);
 
-        $q.notify({
-          progress: true,
-          color: 'grey',
-          textColor: 'primary',
-          icon: 'done',
-          message: 'New channel created successfully',
-          position: 'top'
-        });
+          $q.notify({
+            progress: true,
+            color: 'grey',
+            textColor: 'primary',
+            icon: 'done',
+            message: 'New channel created successfully',
+            position: 'top'
+          });
+
+
+          // Automatically join the user to the channel and update the store
+          await channelsStore.join(response.data.name, isPrivate);
+        } catch (error) {
+          $q.notify({
+            color: 'red',
+            textColor: 'white',
+            icon: 'error',
+            message: 'Failed to create channel',
+            position: 'top'
+          });
+        }
       } else {
         $q.notify({
           color: 'red',
