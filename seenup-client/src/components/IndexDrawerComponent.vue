@@ -59,7 +59,7 @@
                 </q-avatar>
               </q-item-section>
               <q-item-section>
-                <q-item-label class="text-weight-bold text-no-wrap">{{ user?.firstName + ' ' + user?.lastName }}</q-item-label>
+                <q-item-label class="text-weight-bold text-no-wrap">{{ user?.first_name + ' ' + user?.last_name }}</q-item-label>
                 <q-item-label caption class="text-purple-4">
                   <q-icon :name="userStatus.icon" :color="userStatus.color"></q-icon>{{ user?.status }}
                 </q-item-label>

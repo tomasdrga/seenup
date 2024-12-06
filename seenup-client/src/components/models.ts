@@ -28,7 +28,7 @@ export interface Message {
 
 export interface User {
   id: number,
-  userName: string,
+  nickname: string,
   profilePic: string,
   status: string
 }

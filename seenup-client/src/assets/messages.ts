@@ -4,7 +4,7 @@ import { users } from 'assets/users';
 
 const getUserDetails = (userId: number) => {
   const user = users.value.find(user => user.id === userId);
-  return user ? { userName: user.userName, profilePic: user.profilePic } : { userName: 'Unknown', profilePic: '' };
+  return user ? { userName: user.nickname, profilePic: user.profilePic } : { userName: 'Unknown', profilePic: '' };
 };
 
 export const allMessages = ref<Message[]>([
@@ -49,5 +49,5 @@ export const allMessages = ref<Message[]>([
   { id: 38, text: 'Okeeej, tak si tryhardík aj naďalej 😆', ...getUserDetails(1), timestamp: new Date('2024-03-01T09:15:00'), type: MessageType.user, channelUuid: '4a618c6b' },
   { id: 39, text: 'Po piatku si nájdeme čas, sľubujem', ...getUserDetails(2), timestamp: new Date('2024-03-01T09:18:00'), type: MessageType.user, channelUuid: '4a618c6b' },
   { id: 40, text: 'Dobre, držím ťa za slovo.', ...getUserDetails(1), timestamp: new Date('2024-03-01T09:20:00'), type: MessageType.user, channelUuid: '4a618c6b' },
-  
+
 ]);

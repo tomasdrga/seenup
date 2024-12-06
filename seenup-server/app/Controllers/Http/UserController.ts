@@ -25,6 +25,10 @@ export default class UserController {
 
   public async getUsers({ request, response }: HttpContextContract) {
     const channelName = request.input('channel');
+    if (!channelName) {
+      return response.badRequest({ error: 'Channel name is required' });
+    }
+
 
     const channel = await Channel.query().where('name', channelName).first();
 
@@ -38,7 +42,7 @@ export default class UserController {
 
     const userIdList = userIds.map((user: any) => user.user_id);
 
-    const users = await Database.from('users').whereIn('id', userIdList).select('id', 'nickname');
+    const users = await Database.from('users').whereIn('id', userIdList).select('id', 'nickname','status');
 
     return response.ok(users);
   }

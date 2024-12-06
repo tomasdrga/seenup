@@ -56,17 +56,17 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, PropType, ref} from 'vue';
+  import {computed, onMounted, PropType, ref} from 'vue';
 
-  import { MessageType, User } from 'components/models';
+  import { MessageType} from 'components/models';
   import { useAuthStore } from 'stores/module-auth';
   import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
   import {api} from 'boot/axios';
-
   const channelsStore = useChannelsStore();
   const activeChannel = computed(() => channelsStore.active);
 
   const nicknames = ref<string[]>([]);
+
   const usersNew = async () => {
     try {
       const response = await api.get('/auth/users', { params: { channel: activeChannel.value } });
@@ -110,16 +110,16 @@ import {computed, onMounted, PropType, ref} from 'vue';
         type: String as PropType<MessageType>,
         required: true
       },
-      users: {
-        type: Array as PropType<User[]>,
-        required: true
-      }
   });
+
+  let userName = props.userName;
+  if(props.type === MessageType.system) {
+    userName = 'SeenUp Bot';
+  }
 
   const processedMessage = computed(() => {
     return props.message.replace(/@(\S+)(?=\s|$)/g, function(_: string, matchedUsername: string) {
       const username = matchedUsername.trim();
-
       const userExists = nicknames.value.some((nickname: string) => nickname.localeCompare(username, undefined, { sensitivity: 'base' }) === 0);
       return userExists ? `<mark>@${username}</mark>` : `@${username}`;
     });

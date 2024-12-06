@@ -2,7 +2,6 @@ import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import type { WsContextContract } from "@ioc:Ruby184/Socket.IO/WsContext";
 import Channel from 'App/Models/Channel'
 import User from 'App/Models/User'
-import { globalSocket } from 'start/socket';
 
 export default class ChannelsController {
     public async create({ request, response, auth }: HttpContextContract) {
@@ -24,7 +23,7 @@ export default class ChannelsController {
 
         return response.created(channel)
     }
-    
+
     public async isAdmin({ params, auth, response }: HttpContextContract) {
         const user = auth.user
         if (!user) {
@@ -156,7 +155,7 @@ export default class ChannelsController {
         socket: WsContextContract['socket'],
         auth: WsContextContract['auth'],
         channelName: string, isPrivateFlag?: string) {
-        
+
         if (isPrivateFlag) {
             isPrivateFlag = isPrivateFlag.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
         }
@@ -164,7 +163,7 @@ export default class ChannelsController {
         if (channelName) {
             channelName = channelName.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
         }
-            
+
         const currentUser = auth.user!;
         const isPrivate = isPrivateFlag === "[private]";
 
