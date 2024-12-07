@@ -23,7 +23,7 @@ export default class ChannelsController {
 
         return response.created(channel)
     }
-    
+
     public async isAdmin({ params, auth, response }: HttpContextContract) {
         const user = auth.user
         if (!user) {
@@ -155,7 +155,7 @@ export default class ChannelsController {
         socket: WsContextContract['socket'],
         auth: WsContextContract['auth'],
         channelName: string, isPrivateFlag?: string) {
-        
+
         if (isPrivateFlag) {
             isPrivateFlag = isPrivateFlag.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
         }
@@ -163,7 +163,7 @@ export default class ChannelsController {
         if (channelName) {
             channelName = channelName.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
         }
-            
+
         const currentUser = auth.user!;
         const isPrivate = isPrivateFlag === "[private]";
 

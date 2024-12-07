@@ -2,7 +2,6 @@ import type { WsContextContract } from "@ioc:Ruby184/Socket.IO/WsContext";
 import type { MessageRepositoryContract } from "@ioc:Repositories/MessageRepository";
 import { inject } from "@adonisjs/core/build/standalone";
 import ChannelController from '../Http/ChannelsController';
-
 @inject(["Repositories/MessageRepository"])
 export default class MessageController {
     constructor(private messageRepository: MessageRepositoryContract) { }
@@ -30,42 +29,56 @@ export default class MessageController {
         return message;
     }
 
-    private async parseAndExecuteCommand(
-        content: string,
-        params: Record<string, any>,
-        socket: WsContextContract['socket'],
-        auth: WsContextContract['auth']
-    ) {
-        const [command, channelName, privacyFlag] = content.split(' ');
-        const channelsController = new ChannelController();
+  private async parseAndExecuteCommand(
+    content: string,
+    params: Record<string, any>,
+    socket: WsContextContract['socket'],
+    auth: WsContextContract['auth']
+  ) {
+    const [command, ...args] = content.split(' ');
+    const channelsController = new ChannelController();
 
-        switch (command) {
-            case '/join':
-                if (channelName) {
-                    return channelsController.joinOrCreateChannel(params, socket, auth, channelName, privacyFlag);
-                } else {
-                    return socket.emit('error', 'Please specify a channel name for the /join command.');
-                }
-            case '/leave':
-                    const currentChannel = params.name;
-                    return socket.emit('channel:leave', { channelName: currentChannel });
-                
+    switch (command) {
+      case '/join':
+          if (channelName) {
+              return channelsController.joinOrCreateChannel(params, socket, auth, channelName, privacyFlag);
+          } else {
+              return socket.emit('error', 'Please specify a channel name for the /join command.');
+          }
+      case '/leave':
+              const currentChannel = params.name;
+              return socket.emit('channel:leave', { channelName: currentChannel });
 
-            case '/invite':
-                if (channelName) {
-                    return channelsController.inviteUser(params, socket, auth, channelName);
-                } else {
-                    return socket.emit('error', 'Please specify a nickname for the /invite command.');
-                }
-            case '/revoke':
-                if (channelName) {
-                    return channelsController.revokeUser(params, socket, auth, channelName);
-                } else {
-                    return socket.emit('error', 'Please specify a nickname for the /revoke command.');
-                }
-            default:
-                return socket.emit('error', 'Unknown command.');
-        }
+
+      case '/invite':
+          if (channelName) {
+              return channelsController.inviteUser(params, socket, auth, channelName);
+          } else {
+              return socket.emit('error', 'Please specify a nickname for the /invite command.');
+          }
+      case '/revoke':
+          if (channelName) {
+              return channelsController.revokeUser(params, socket, auth, channelName);
+          } else {
+              return socket.emit('error', 'Please specify a nickname for the /revoke command.');
+          }
+
+      case '/list':
+        const message = await this.messageRepository.create(
+          params.name,
+          auth.user!.id,
+          content
+        );
+
+        socket.broadcast.emit("message", message);
+
+        return message;
+
+      default:
+        return socket.emit('error', 'Unknown command.');
     }
+  }
+
 
 }
+

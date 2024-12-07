@@ -2,14 +2,15 @@
   <div v-if="showUsers && props.users" class="user-suggestions absolute bg-white rounded-border text-primary hide-scrollbar q-ml-sm"
        style="width: 250px; max-height: 10rem; overflow: auto; max-width: 300px; bottom: 95px; left: -1rem">
     <q-list dense class="q-py-sm">
-      <q-item v-for="(user, index) in props.users" :key="user.userName" clickable v-ripple @click="selectUser(user.userName)"
+      <q-item v-for="(user, index) in props.users" :key="user.nickname" clickable v-ripple @click="selectUser(user.nickname)"
               :class="index === props.users.length - 1 ? '' : 'user-item'">
         <div class="content-center">
           <q-avatar size="sm" rounded color="purple" text-color="white">
-            <img :src="user.profilePic" alt="Avatar"/>
+            <img :src="'/avatars/matko.jpg'" alt="Avatar" />
+
           </q-avatar>
         </div>
-        <q-item-section class="q-ml-sm">{{ user.userName }}</q-item-section>
+        <q-item-section class="q-ml-sm">{{ user.nickname }}</q-item-section>
       </q-item>
     </q-list>
   </div>
@@ -29,17 +30,14 @@
       default: () => [],
     },
   });
-
   const emit = defineEmits(['user-selected']);
-  const selectUser = (userName: string) => {
-    emit('user-selected', userName);
+  const selectUser = (nickname: string) => {
+    emit('user-selected', nickname);
   };
 </script>
 
 <style scoped>
-  .user-item {
-    border-bottom: 1px solid #00000015;
-  }
+
   .user-suggestions {
     z-index: 1;
     background-color: rgba(255, 255, 255, 0.95);
