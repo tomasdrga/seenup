@@ -1,20 +1,18 @@
-// src/services/SocketManager.ts
-
+import type { BootCallback } from '@quasar/app-webpack';
+import type { AuthStateInterface } from 'src/stores/auth';
 import { Manager, Socket } from 'socket.io-client';
 import { authManager } from '.';
-import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type BootParams<
+    T extends BootCallback<AuthStateInterface> = BootCallback<AuthStateInterface>
+> = T extends (params: infer P) => unknown ? P : never;
 
 export interface SocketManagerContract {
     namespace: string;
     readonly socket: Socket;
-    subscribe(): void;
+    subscribe(params: BootParams): void;
     destroy(): void;
-}
-
-interface ConnectErrorData {
-    status?: number;
-    // Include other properties if necessary
-    [key: string]: unknown;
 }
 
 export interface SocketManagerConstructorContract {
@@ -29,21 +27,24 @@ const DEBUG = process.env.NODE_ENV === 'development';
 
 export abstract class SocketManager implements SocketManagerContract {
     private static manager: Manager;
+    private static instances: SocketManagerContract[] = [];
     private static namespaces: Set<string> = new Set();
+    private static params: BootParams | null = null;
 
     public static getManager() {
         if (!this.manager) {
             throw new Error(
-                'Socket.io Manager not created. Please call "SocketManager.createManager(uri)" in the Quasar boot file.'
+                'Socket.io Manager not created. Please call "SocketManager.createManager(uri)" in quasar boot file.'
             );
         }
+
         return this.manager;
     }
 
     public static createManager(uri?: string): Manager {
-        console.log('createManager called with uri:', uri);
-        this.manager = new Manager(uri, { autoConnect: false });
-        return this.manager;
+        const manager = new Manager(uri, { autoConnect: false });
+        this.manager = manager;
+        return manager;
     }
 
     public static addInstance(instance: SocketManagerContract): void {
@@ -52,64 +53,82 @@ export abstract class SocketManager implements SocketManagerContract {
                 `Duplicate socket manager created for namespace "${instance.namespace}".`
             );
         }
+
         this.namespaces.add(instance.namespace);
-        this.bootInstance(instance);
+
+        // if SocketManager has been already booted we can boot created instance
+        if (this.params !== null) {
+            this.bootInstance(instance);
+        } else {
+            this.instances.push(instance);
+        }
     }
 
-    public static destroyInstance(instance: SocketManagerContract & { $socket: Socket | null }): void {
+    public static destroyInstance(
+        instance: SocketManagerContract & { $socket: Socket | null }
+    ): void {
+        this.instances = this.instances.filter((socket) => socket !== instance);
         this.namespaces.delete(instance.namespace);
-        // Disconnect and clean socket
+        // disconnect and clean socket
         instance.socket.disconnect();
         instance.socket.removeAllListeners();
         instance.$socket = null;
     }
 
     private static bootInstance(instance: SocketManagerContract): void {
-        instance.subscribe();
-        // Connect socket - if it was not used in subscribe, it will be created
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        instance.subscribe(this.params!);
+        // connect socket - if it was not used in subscribe it will be created
         instance.socket.connect();
+    }
 
-        instance.socket.on('join_channel', (data: { channelId: number, channelName: string, isPrivate: boolean, userId: string }) => {
-            useChannelsStore().join(data.channelName, data.isPrivate);
-            console.log('Received join_channel event with:', data)
-        });
+    public static boot(params: BootParams): void {
+        if (this.params) {
+            throw new Error(
+                'SocketManager is already booted. Call it once from quasar boot file.'
+            );
+        }
 
-        instance.socket.on('invited_to_channel', (data: { channelId: number, channelName: string, isPrivate: boolean, userId: string }) => {
-            
-            console.log('Received invited_to_channel event with:', data)
-        });
-
-
-        instance.socket.on('channel:deleted', (data: { channelId: string }) => {
-            console.log('Received channel:deleted event:', data)
-        });
+        this.params = params;
+        // call subscribe for already created instances and connect to socket
+        this.instances.forEach((instance) => this.bootInstance(instance));
+        // clean instances
+        this.instances = [];
     }
 
     private $socket: Socket | null = null;
 
+    // lazily create socket
     public get socket(): Socket {
         if (!this.$socket) {
             this.$socket = this.socketWithAuth();
         }
+
         return this.$socket;
     }
 
     constructor(public namespace: string) {
-        console.log(`SocketManager constructor for namespace: ${namespace}`);
         (this.constructor as SocketManagerConstructorContract).addInstance(this);
     }
 
+    // this function returns socket.io socket for given namespace which handles auth token
     private socketWithAuth(): Socket {
-        console.log(`socketWithAuth called for namespace: ${this.namespace}`);
-        const io = (this.constructor as SocketManagerConstructorContract).getManager();
+        const io = (
+            this.constructor as SocketManagerConstructorContract
+        ).getManager();
 
         const socket = io.socket(this.namespace, {
             auth: { token: authManager.getToken() },
         });
 
-        socket.on('connect_error', (err: Error & { data?: ConnectErrorData }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        socket.on('connect_error', (err: Error & { data?: any }) => {
             if (DEBUG) {
-                console.error(`${this.namespace} [connect_error]`, err.message, err.data);
+                console.error(
+                    `${this.namespace} [connect_error]`,
+                    err.message,
+                    err.data
+                );
             }
 
             if (err.data?.status === 401) {
@@ -120,8 +139,6 @@ export abstract class SocketManager implements SocketManagerContract {
                 });
             }
         });
-
-        console.log('process.env.NODE_ENV:', process.env.NODE_ENV);
 
         if (DEBUG) {
             socket.on('connect', () => {
@@ -144,7 +161,12 @@ export abstract class SocketManager implements SocketManagerContract {
         return socket;
     }
 
-    protected emitAsync<T>(event: string, ...args: unknown[]): Promise<T> {
+    /**
+     * This can be used to emit server event and return promise resolved with server response
+     * It is is intended to be used by child class methods
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    protected emitAsync<T>(event: string, ...args: any[]): Promise<T> {
         return new Promise((resolve, reject) => {
             this.socket.emit(event, ...args, (error: Error | null, response: T) => {
                 error ? reject(error) : resolve(response);
@@ -153,8 +175,13 @@ export abstract class SocketManager implements SocketManagerContract {
     }
 
     public destroy(): void {
-        (this.constructor as SocketManagerConstructorContract).destroyInstance(this);
+        (this.constructor as SocketManagerConstructorContract).destroyInstance(
+            this
+        );
     }
 
-    public abstract subscribe(): void;
+    /*
+     * This method should be overidden in child class to subscribe to this.socket events
+     */
+    public abstract subscribe(params: BootParams): void;
 }

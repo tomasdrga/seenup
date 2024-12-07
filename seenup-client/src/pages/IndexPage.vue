@@ -21,7 +21,7 @@
                 :class="{ 'text-weight-bold': index === 0 }"
                 clickable
                 v-ripple
-                @click="setActiveChannel(channel.name)">
+                @click="joinChannel(channel.name, channel.isPrivate)">
 
                   <q-icon :name="channel.isPrivate ? 'lock' : 'tag'" size="xs" />
                   <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': index === 0 || index === 2}">{{ channel.name }}</span>
@@ -51,7 +51,7 @@
                 :class="{ 'text-weight-bold': index === 0 }"
                 clickable
                 v-ripple
-                @click="setActiveChannel(channel.name)">
+                @click="joinChannel(channel.name, channel.isPrivate)">
 
                 <q-icon :name="channel.isPrivate ? 'lock' : 'tag'" size="xs" />
                 <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': index === 0 || index === 2}">{{ channel.name }}</span>
@@ -100,7 +100,7 @@
         </div>
 
         <!-- Command Line -->
-        <div class="col-auto justify-center items-center bottom-bar q-px-sm q-mx-md q-py-sm max-width command-line">
+        <div class="col-auto justify-center items-center bottom-bar q-px-sm q-mx-md q-py-sm max-width command-line q-my-sm">
           <CommandLineComponent @send-message="handleSendMessage" :current-channel="currentChannel"/>
         </div>
       </div>
@@ -261,13 +261,18 @@ export default defineComponent({
     const channelsStore = useChannelsStore();
 
     // Computed properties
-    const channels = computed(() => channelsStore.joinedChannels);
+    const channels = computed(() => channelsStore.getUserChannels);
     console.log(channels);
     const lastMessageOf = (channel: string) => channelsStore.lastMessageOf(channel);
     const activeChannel = computed(() => channelsStore.active);
 
-    const setActiveChannel = (channel: string) => {
-      channelsStore.SET_ACTIVE(channel);
+    const setActiveChannel = (channel: string, isPrivate: boolean) => {
+      channelsStore.SET_ACTIVE(channel, isPrivate);
+    };
+
+    const joinChannel = (channel: string, isPrivate: boolean) => {
+      setActiveChannel(channel, isPrivate);
+      channelsStore.join(channel, isPrivate);
     };
 
     // Server and channel data
@@ -380,6 +385,7 @@ export default defineComponent({
       lastMessageOf,
       activeChannel,
       setActiveChannel,
+      joinChannel,
       leaveChannel,
     };
   },

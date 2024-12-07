@@ -6,7 +6,7 @@
     <UserSuggestionsBox :show-users="showUsers" :users="users" @user-selected="selectUser" />
 
     <!-- Command Line -->
-    <div class="command-line rounded-border bg-white text-primary">
+    <div class="command-line rounded-border bg-white text-primary q-pt-sm">
       <div>
         <q-editor
           v-if="!isSmallScreen"
@@ -111,10 +111,37 @@
 
   // Methods
   const send = async () => {
-    if (!activeChannel.value) return;
+    let messageContent = editor.value.trim();
+
+    if (!activeChannel.value) {
+      if (messageContent.startsWith('/')) {
+        // Handle command
+        messageContent = messageContent.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
+        const [command, name, flag] = messageContent.split(' ');
+        await channelsStore.executeGeneralCommand(command, name, flag);
+        editor.value = ''; // Clear the editor
+      } else {
+        // Handle regular message
+        console.log('No active channel. You can only send commands');
+        editor.value = ''; // Clear the editor
+        return;
+      }
+    };
+
     loading.value = true;
-    await channelsStore.addMessage(activeChannel.value, editor.value); // Pass message.value directly
-    editor.value = '';
+    if (activeChannel.value) {
+       if (messageContent.startsWith('/')) {
+        // Handle command
+        messageContent = messageContent.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
+        const [command, name, flag] = messageContent.split(' ');
+        await channelsStore.executeCommand(activeChannel.value, command, name, flag);
+        editor.value = ''; // Clear the editor
+      } else {
+        // Handle regular message
+        await channelsStore.addMessage(activeChannel.value, messageContent);
+        editor.value = ''; // Clear the editor
+      }
+    }
     loading.value = false;
   };
 

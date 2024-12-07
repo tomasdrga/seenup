@@ -40,31 +40,28 @@ export default class MessageController {
 
     switch (command) {
       case '/join':
-        if (args[0]) {
-          return channelsController.joinOrCreateChannel(
-            params,
-            socket,
-            auth,
-            args[0],
-            args[1]
-          );
-        } else {
-          return socket.emit('error', 'Please specify a channel name for the /join command.');
-        }
+          if (channelName) {
+              return channelsController.joinOrCreateChannel(params, socket, auth, channelName, privacyFlag);
+          } else {
+              return socket.emit('error', 'Please specify a channel name for the /join command.');
+          }
+      case '/leave':
+              const currentChannel = params.name;
+              return socket.emit('channel:leave', { channelName: currentChannel });
+
 
       case '/invite':
-        if (args[0]) {
-          return channelsController.inviteUser(params, socket, auth, args[0]);
-        } else {
-          return socket.emit('error', 'Please specify a nickname for the /invite command.');
-        }
-
+          if (channelName) {
+              return channelsController.inviteUser(params, socket, auth, channelName);
+          } else {
+              return socket.emit('error', 'Please specify a nickname for the /invite command.');
+          }
       case '/revoke':
-        if (args[0]) {
-          return channelsController.revokeUser(params, socket, auth, args[0]);
-        } else {
-          return socket.emit('error', 'Please specify a nickname for the /revoke command.');
-        }
+          if (channelName) {
+              return channelsController.revokeUser(params, socket, auth, channelName);
+          } else {
+              return socket.emit('error', 'Please specify a nickname for the /revoke command.');
+          }
 
       case '/list':
         const message = await this.messageRepository.create(

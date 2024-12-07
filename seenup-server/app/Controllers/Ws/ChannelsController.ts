@@ -80,9 +80,9 @@ export default class ChannelsController {
         auth: WsContextContract['auth'],
         nickName: string) {
 
-            console.log(params);
+        console.log(params);
         nickName = nickName.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
-            console.log(nickName);
+        console.log(nickName);
         const currentUser = auth.user!;
         const channel = await Channel.query().where('name', params.name).first();
         if (!channel) {
@@ -150,22 +150,12 @@ export default class ChannelsController {
         return socket.emit("success", `${nickName} has been removed from the channel.`);
     }
 
-    public async joinOrCreateChannel(
-        params: Record<string, any>,
+    public static async joinOrCreateChannel(
         socket: WsContextContract['socket'],
         auth: WsContextContract['auth'],
-        channelName: string, isPrivateFlag?: string) {
-
-        if (isPrivateFlag) {
-            isPrivateFlag = isPrivateFlag.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
-        }
-
-        if (channelName) {
-            channelName = channelName.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
-        }
+        channelName: string, isPrivate: boolean) {
 
         const currentUser = auth.user!;
-        const isPrivate = isPrivateFlag === "[private]";
 
         try {
             let channel = await Channel.query().where("name", channelName).first();
@@ -180,6 +170,8 @@ export default class ChannelsController {
 
             } else if (channel.isPrivate && channel.adminId !== currentUser.id) {
                 return socket.emit("error", "Only the admin can join or invite others to private channels.");
+            } else if (channel.isPrivate && channel.adminId == currentUser.id) {
+                socket.emit("join_channel", { channelId: channel.id, channelName: channel.name, channelType: channel.isPrivate, userId: currentUser.id });
             } else {
                 if (!channel.isPrivate) {
                     socket.emit("join_channel", { channelId: channel.id, channelName: channel.name, channelType: channel.isPrivate, userId: currentUser.id });
@@ -190,6 +182,16 @@ export default class ChannelsController {
             if (!isMember) {
                 await channel.related("users").attach([currentUser.id]);
             }
+
+            console.log("fetching user channels");
+            const user = auth.user!;
+            const channels = await user.related("channels").query();
+            console.log(channels);
+            const userChannels = channels.map(channel => ({
+                name: channel.name,
+                isPrivate: channel.isPrivate
+            }));
+            socket.emit("user:channels", userChannels as Channel[]);
 
             socket.to(`channel_${channel.id}`).emit("user_joined", { channelId: channel.id, userId: currentUser.id });
             return socket.emit("success", `You have joined ${channelName}`);
