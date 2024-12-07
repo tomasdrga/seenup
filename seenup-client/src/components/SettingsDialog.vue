@@ -48,7 +48,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { useQuasar } from 'quasar';
-
+export const userNotificationSetting = ref(null);
 export default defineComponent({
   props: {
     settings: {
@@ -63,7 +63,9 @@ export default defineComponent({
     const notificationType = ref(null);
     const options = ['Off', 'Only mentions', 'All messages'];
 
+
     const onSubmit = () => {
+      userNotificationSetting.value = notificationType.value;
       $q.notify({
         progress: true,
         color: 'grey',
@@ -92,4 +94,5 @@ export default defineComponent({
     };
   },
 });
+
 </script>
