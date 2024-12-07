@@ -46,6 +46,11 @@ export default class MessageController {
                 } else {
                     return socket.emit('error', 'Please specify a channel name for the /join command.');
                 }
+            case '/leave':
+                    const currentChannel = params.name;
+                    return socket.emit('channel:leave', { channelName: currentChannel });
+                
+
             case '/invite':
                 if (channelName) {
                     return channelsController.inviteUser(params, socket, auth, channelName);

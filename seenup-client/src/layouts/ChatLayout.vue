@@ -61,12 +61,12 @@
               :key="index"
               clickable
               v-ripple
-              @click="setActiveChannel(channel)"
+              @click="setActiveChannel(channel.name, channel.isPrivate)"
             >
               <q-item-section>
                 <q-item-label lines="1"> {{ channel }} </q-item-label>
                 <q-item-label class="conversation__summary" caption>
-                  {{ lastMessageOf(channel)?.content || '' }}
+                  {{ lastMessageOf(channel.name)?.content || '' }}
                 </q-item-label>
               </q-item-section>
 
@@ -138,8 +138,8 @@ export default defineComponent({
       loading.value = false;
     };
 
-    const setActiveChannel = (channel: string) => {
-      channelsStore.SET_ACTIVE(channel);
+    const setActiveChannel = (channel: string, isPrivate: boolean) => {
+      channelsStore.SET_ACTIVE(channel, isPrivate);
     };
 
     const logout = async () => {

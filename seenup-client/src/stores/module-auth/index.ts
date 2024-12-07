@@ -24,17 +24,28 @@ export const useAuthStore = defineStore('auth', {
                 console.log('Calling authService.me()');
                 const user = await authService.me();
                 console.log('User retrieved:', user);
+                this.user = user;
                 if (user?.id !== this.user?.id) {
                     try {
                         const channelsStore = useChannelsStore();
+                        const activeChannel = channelsStore.getActiveChannel;
+                        console.log('AKTIV', activeChannel)
                         await channelsStore.join('general', false);
-
+                        channelsStore.SET_ACTIVE('general', false);
                         console.log('Joined general channel');
                     } catch (joinError) {
                         console.error('Error joining general channel:', joinError);
                     }
                 }
-                this.user = user;
+                const channelsStore = useChannelsStore();
+                const activeChannel = channelsStore.getActiveChannel ? channelsStore.getActiveChannel : null;
+                console.log('AKTIV', activeChannel);
+                if (activeChannel?.name && activeChannel?.type) {
+                    const channelType = activeChannel.type === 'private' ? true : false;
+                    channelsStore.join(activeChannel.name, channelType);
+                    channelsStore.SET_ACTIVE(activeChannel.name, channelType);
+                }
+            
                 this.status = 'success';
                 return user !== null;
             } catch (err) {

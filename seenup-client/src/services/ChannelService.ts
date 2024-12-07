@@ -17,6 +17,11 @@ class ChannelSocketManager extends SocketManager {
         this.socket.on('channel:deleted', (data: { channelId: string }) => {
             console.log('Received channel:deleted event:', data)
         });
+
+        this.socket.on('channel:leave', (data: { channelName: string }) => {
+            console.log('Received channel:leave event:', data);
+            channelsStore.leave(data.channelName);
+        });
     }
 
     public addMessage(message: RawMessage): Promise<SerializedMessage> {
@@ -25,6 +30,10 @@ class ChannelSocketManager extends SocketManager {
 
     public loadMessages(): Promise<SerializedMessage[]> {
         return this.emitAsync('loadMessages');
+    }
+
+    public executeCommand(command: string, name: string, flag: string): Promise<void> {
+        return this.emitAsync('executeCommand', command, name, flag);
     }
 }
 

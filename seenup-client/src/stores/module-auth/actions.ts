@@ -17,12 +17,17 @@ export const authActions = {
             if (user?.id !== this.user?.id) {
                 try {
                     const channelsStore = useChannelsStore();
+                    const activeChannel = channelsStore.getActiveChannel;
+                    console.log('AKTIV',activeChannel)
                     await channelsStore.join('general', false);
                     console.log('Joined general channel');
                 } catch (joinError) {
                     console.error('Error joining general channel:', joinError);
                 }
             }
+            const channelsStore = useChannelsStore();
+            const activeChannel = channelsStore.getActiveChannel;
+            console.log('AKTIV', activeChannel);
             this.status = 'success';
             return true;
         } catch (err) {

@@ -38,9 +38,3 @@ Route.group(() => {
   Route.post('change-status', 'UserController.changeStatus').middleware('auth')
   Route.get('users', 'UserController.getUsers').middleware('auth')
 }).prefix('auth')
-
-
-Ws.namespace("channels/:name")
-  // .middleware('channel') // check if user can join given channel
-  .on("loadMessages", "MessageController.loadMessages")
-  .on("addMessage", "MessageController.addMessage");
