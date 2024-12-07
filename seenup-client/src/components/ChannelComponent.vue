@@ -39,7 +39,6 @@ import {  Message, MessageType, Channel, Server } from 'components/models';
 import { formatTime ,getDayStringSafe, scrollToBottom } from './channel-helpers';
 
 import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
-import {api} from 'boot/axios';
 import {useAuthStore} from 'stores/module-auth';
 import { userNotificationSetting } from './SettingsDialog.vue';
 
@@ -67,6 +66,9 @@ const formatListMessage = (messageContent: string, usersList: string[], currentU
 };
 
 const messages = computed(() => {
+  if (!channelsStore.currentMessages || channelsStore.currentMessages.length === 0) {
+    return []; // Return an empty array or handle it as needed
+  }
   return channelsStore.currentMessages.map(message => {
     if (message.content.trim() === '/list') {
       if (message.author.id === user.value?.id) {
@@ -97,27 +99,27 @@ const items = ref<Message[]>([]);
 const users = ref<string[]>([]);
 
 // Fetch users from the database
-const fetchUsers = async () => {
-  try {
-    const response = await api.get('/auth/users', { params: { channel: activeChannel.value } });
-    for (let i = 0; i < response.data.length; i++) {
-      users.value.push(response.data[i].nickname);
-    }
-  } catch (error) {
-
-    console.error('Failed to load users:', error);
-  }
-};
-const activeChannel = computed(() => channelsStore.active);
-watch(
-  activeChannel,
-  async (newChannel, oldChannel) => {
-    if (newChannel !== oldChannel) {
-      await fetchUsers();
-    }
-  },
-  { immediate: true }
-);
+// const fetchUsers = async () => {
+//   try {
+//     const response = await api.get('/auth/users', { params: { channel: activeChannel.value } });
+//     for (let i = 0; i < response.data.length; i++) {
+//       users.value.push(response.data[i].nickname);
+//     }
+//   } catch (error) {
+//
+//     console.error('Failed to load users:', error);
+//   }
+// };
+// const activeChannel = computed(() => channelsStore.active);
+// watch(
+//   activeChannel,
+//   async (newChannel, oldChannel) => {
+//     if (newChannel !== oldChannel) {
+//       await fetchUsers();
+//     }
+//   },
+//   { immediate: true }
+// );
 
 const requestNotificationPermission = async () => {
   console.log('requesting notification')
@@ -174,7 +176,6 @@ function checkMention (message: string) {
   return false;
 }
 
-
 watch(() => channelsStore.currentMessages, async () => {
   await nextTick();
   if (permissionGranted.value && !$q.appVisible) {
@@ -222,15 +223,15 @@ watch(() => props.channel, () => {
   resetMessages();
 }, { immediate: true });
 
-// Reset messages when switching channels
-watch(activeChannel, async (newChannel, oldChannel) => {
-  if (newChannel !== oldChannel) {
-    // Reset messages for the new channel
-    items.value = [];
-    showInfiniteScroll.value = true;
-    //await onLoad(0, () => {});
-  }
-}, { immediate: true });
+// // Reset messages when switching channels
+// watch(activeChannel, async (newChannel, oldChannel) => {
+//   if (newChannel !== oldChannel) {
+//     // Reset messages for the new channel
+//     items.value = [];
+//     showInfiniteScroll.value = true;
+//     //await onLoad(0, () => {});
+//   }
+// }, { immediate: true });
 
 </script>
 
