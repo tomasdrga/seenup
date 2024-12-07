@@ -1,6 +1,6 @@
 <template>
   <div v-if="showInfiniteScroll">
-    <q-infinite-scroll ref="infiniteScroll" @load="onLoad" reverse>
+    <q-infinite-scroll ref="infiniteScroll" reverse>
       <template v-slot:loading>
         <div class="row justify-center q-my-md">
           <q-spinner color="deep-purple-4" name="dots" size="40px" />
@@ -9,233 +9,235 @@
 
       <!--  Generate the chat messages -->
       <template v-for="(message, index) in messages" :key="index">
-        <q-chat-message v-if="index === 0 || getDayStringSafe(message.createdAt) !== getDayStringSafe(messages[index-1].createdAt)"
-                        :label="getDayStringSafe(message.createdAt)"
+        <q-chat-message v-if="index === 0 || getDayStringSafe(message.created_at) !== getDayStringSafe(messages[index-1].created_at)"
+                        :label="getDayStringSafe(message.created_at)"
                         style="height: 1rem; padding-top: 0;"
                         class="text-deep-purple-4"/>
         <span v-if="message.author">
-          <message-component
-            :time="formatTime(new Date(message.createdAt))"
+          <Message-component
+            :time="formatTime(new Date(message.created_at))"
             :message="message.content"
             :user-name="message.author.nickname"
             :user-status="message.author.status"
-            :profile-pic="'/avatars/matko.jpg'"
-            :type="MessageType.user"
-            :users="users"/>
+            :profile-pic="message?.messageType === MessageType.user ? '/avatars/matko.jpg' : 'nowty_face.png'"
+            :type="message?.messageType"
+          />
         </span>
       </template>
     </q-infinite-scroll>
-    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, ref, watch} from 'vue';
+import {computed, nextTick, onMounted, ref, watch} from 'vue';
 
-  import { useQuasar, QInfiniteScroll } from 'quasar';
+import {QInfiniteScroll, useQuasar} from 'quasar';
 
+import MessageComponent from './MessageComponent.vue';
+import { allMessages } from 'assets/messages';
+import {  Message, MessageType, Channel, Server } from 'components/models';
+import { formatTime ,getDayStringSafe, scrollToBottom } from './channel-helpers';
 
+import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
+import {api} from 'boot/axios';
+import {useAuthStore} from 'stores/module-auth';
+import { userNotificationSetting } from './SettingsDialog.vue';
 
-  import MessageComponent from 'components/MessageComponent.vue';
-  import { allMessages } from 'assets/messages';
-  import { users, system } from 'assets/users';
-  import {  Message, MessageType, User, Channel, Server } from 'components/models';
-  import { formatTime ,getDayStringSafe, scrollToBottom } from './channel-helpers';
+const authStore = useAuthStore();
+let user = computed(() => authStore.user);
 
-  import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
+if (!user.value) {
+  authStore.loadUserFromCache();
+}
 
-  const channelsStore = useChannelsStore();
-  const messages = computed(() => channelsStore.currentMessages);
+const channelsStore = useChannelsStore();
 
-  const props = defineProps({
-    currentServer: {
-      type: Object as () => Server,
-      required: true
-    },
-    channel: {
-      type: Object as () => Channel,
-      required: true
+const formatListMessage = (messageContent: string, usersList: string[], currentUserNickname: string) => {
+  const otherUsers = usersList.filter(username => username !== currentUserNickname);
+
+  const formattedUsers = otherUsers.map(username => `@${username}`);
+
+  formattedUsers.push('You');
+
+  const finalMessage = formattedUsers.length > 1
+    ? formattedUsers.slice(0, -1).join(', ') + ' and ' + formattedUsers[formattedUsers.length - 1]
+    : formattedUsers[0];
+
+  return `Users here: ${finalMessage}`;
+};
+
+const messages = computed(() => {
+  return channelsStore.currentMessages.map(message => {
+    if (message.content.trim() === '/list') {
+      if (message.author.id === user.value?.id) {
+        const formattedMessage = formatListMessage(message.content.trim(), users.value, user.value?.nickname);
+        return { ...message, content: formattedMessage, messageType: MessageType.system};
+      }
+      return null;
     }
-  });
+    return {...message, messageType: MessageType.user};
+  }).filter(message => message !== null);
+});
 
-  const $q = useQuasar();
-  const infiniteScroll = ref<QInfiniteScroll | null>(null);
-  const showInfiniteScroll = ref(false);
-  const items = ref<Message[]>([]);
-  const userLoggedIn = 'Matej';
+const props = defineProps({
+  currentServer: {
+    type: Object as () => Server,
+    required: true
+  },
+  channel: {
+    type: Object as () => Channel,
+    required: true
+  }
+});
 
-  // Reset messages, used when switching between channels multiple times
-  const resetMessages = () => {
-    items.value = allMessages.value
-      .filter(message => message.channelUuid === props.channel.uuid)
-      .slice(-10);
+const infiniteScroll = ref<QInfiniteScroll | null>(null);
+const showInfiniteScroll = ref(false);
+const items = ref<Message[]>([]);
 
-    showInfiniteScroll.value = false;
+const users = ref<string[]>([]);
 
-    nextTick(() => {
-      showInfiniteScroll.value = true;
-      if (infiniteScroll.value) {
-        infiniteScroll.value.reset();
-      }
-    });
-  };
-
-  // Watch for channel
-  watch(() => props.channel, () => {
-    resetMessages();
-  }, { immediate: true });
-
-    // Watch for channel
-  watch(() => props.channel, () => {
-    resetMessages();
-  }, { immediate: true });
-
-
-
-
-  // Handling the load event in an infinite scroll
-  const onLoad = (index: number, done: () => void) => {
-    setTimeout(() => {
-      const currentMessageCount = items.value.length;
-      const allMessagesInChannel = allMessages.value.filter(message => message.channelUuid === props.channel.uuid);
-
-      const newMessages = allMessagesInChannel.slice(Math.max(allMessagesInChannel.length - currentMessageCount - 10, 0), allMessagesInChannel.length - currentMessageCount);
-
-      if (newMessages.length > 0) {
-        items.value.unshift(...newMessages);
-      }
-
-      if (newMessages.length === 0 && infiniteScroll.value) {
-        infiniteScroll.value.stop();
-      }
-
-      done();
-    }, 1000);
-  };
-
-  // Checking the message for commands
-  function commandsCheck(message: string) {
-    const messageClean = message.replace(/<[^>]*>/g, '').trim();
-    if (messageClean === '/list') {
-      const otherUsers = users.value.filter(user => user.userName !== userLoggedIn).map(user => '@' + user.userName).join(' , ');
-      const listMessage = `Users here: ${otherUsers} ... and you!`;
-      // Create a system message with the list of users
-      const systemMessage = {
-        id: allMessages.value.length + 1,
-        text: listMessage,
-        userName: system.userName,
-        profilePic: system.profilePic,
-        timestamp: new Date(),
-        type: MessageType.system,
-        channelUuid: props.channel.uuid
-      };
-
-      allMessages.value.push(systemMessage);
-      items.value.push(systemMessage);
-      showSystemNotification('New message from SeenUpBot');
-      return true
-    } else if (messageClean.startsWith('/join')) {
-      //const messageParts = messageClean.split(' ');
-      // Create a new channel
-      // rCurrentServer.channels.push({
-      //   id: rCurrentServer.channels.length + 1,
-      //   uuid: uuidv4(),
-      //   name: messageParts[1],
-      //   type: ChannelType.public,
-      //   users: [users.value[0]],
-      //   messages: allMessages.value,
-      // });
-      showSystemNotification('New channel created');
-      return true
+// Fetch users from the database
+const fetchUsers = async () => {
+  try {
+    const response = await api.get('/auth/users', { params: { channel: activeChannel.value } });
+    for (let i = 0; i < response.data.length; i++) {
+      users.value.push(response.data[i].nickname);
     }
-    return false
-  };
+  } catch (error) {
 
-  function showSystemNotification(message: string) {
-    $q.notify({
-      color: 'primary',
-      textColor: 'deep-purple-1',
-      avatar: '/nowty_face.png',
-      message: message,
-      position: 'top-right',
-      timeout: 1000
+    console.error('Failed to load users:', error);
+  }
+};
+const activeChannel = computed(() => channelsStore.active);
+watch(
+  activeChannel,
+  async (newChannel, oldChannel) => {
+    if (newChannel !== oldChannel) {
+      await fetchUsers();
+    }
+  },
+  { immediate: true }
+);
+
+const requestNotificationPermission = async () => {
+  console.log('requesting notification')
+  try {
+    console.log('requesting notification')
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
+  }
+};
+
+const $q = useQuasar();
+
+const sendNotification = (message: string) => {
+  if (Notification.permission === 'granted' && !$q.appVisible) {
+    const notification = new Notification('New message', {
+      body: message,
+      icon: require('../../public/nowty_face.png')
     });
-  };
 
-  function showNotification(message: string, user: User) {
-    const cleanMessage = message.replace(/<[^>]*>/g, '').trim();
-    const processedMessage = cleanMessage.length > 20 ? cleanMessage.substring(0, 25) + '...' : cleanMessage;
+    notification.onclick = () => {
+      window.focus();
+    };
+  }
+};
+let permissionGranted = ref(false);
+const startNotificationInterval = async () => {
+   permissionGranted.value = await requestNotificationPermission();
+};
 
-    // Process the message to highlight the users
-    const messageToShow = computed(() => {
-      return processedMessage.replace(/@(\S+\s?\S*)(?=\s|$)/g, function(_: string, matchedUsername: string) {
-        const username = matchedUsername.trim();
+// Initialize notifications when component mounts
+onMounted(() => {
+  startNotificationInterval();
+});
 
-        const userExists = users.value.some((user: User) => (user.userName === username) || username.startsWith(user.userName + ' '));
+onMounted(async () => {
+  try {
+    await requestNotificationPermission();
+  } catch (error) {
+    throw new Error('Error initializing channels');
+  }
+})
 
-        return userExists ? `<mark>@${username}</mark>` : `@${username}`;
-      });
-    });
+function checkMention (message: string) {
+  console.log('checking mention');
+  console.log('user', user.value);
+  if (user.value) { // Ensure user is defined
+    const regex = new RegExp(`@${user.value.nickname}\\b`, 'i');
+    console.log(regex.test(message));
+    return regex.test(message);
+  }
+  return false;
+}
 
-    // Custom notification
-    $q.notify({
-      color: 'white',
-      textColor: 'primary',
-      avatar: user.profilePic,
-      message: `
-        <div class="col message-alert" style="width: 300px;" role="alert">
-          <div class="text-bold">${user.userName}</div>
-          <div>${messageToShow.value}</div>
-        </div>
-      `,
-      position: 'top-right',
-      timeout: 1000,
-      html: true
-    });
-  };
 
-  function addMessage(newMessage: string) {
-    if (commandsCheck(newMessage)) {
-      nextTick(() => {
-        scrollToBottom();
-      });
+watch(() => channelsStore.currentMessages, async () => {
+  await nextTick();
+  if (permissionGranted.value && !$q.appVisible) {
+    const latestMessage = channelsStore.currentMessages[channelsStore.currentMessages.length - 1];
+    const sender = latestMessage.author.nickname;
+    if (latestMessage.content.startsWith('/')
+      || !latestMessage
+      || userNotificationSetting.value === 'Off'
+      || user.value?.status === 'dnd'
+      || user.value?.status === 'offline'
+    ) return;
+    const cleanMessage = latestMessage.content.replace(/<[^>]*>/g, '').trim();
+    const processedMessage = cleanMessage.length > 25
+      ? cleanMessage.substring(0, 25) + '...'
+      : cleanMessage;
+    if (userNotificationSetting.value ==='Only mentions') {
+      if (checkMention(latestMessage.content)) {
+        sendNotification(`${sender}: ${processedMessage}`);
+      }
       return;
     }
+    sendNotification(`${sender}: ${processedMessage}`);
+  }
+  scrollToBottom();
+}, { deep: true });
 
-    const user = users.value[0];
-    const message = {
-      id: allMessages.value.length + 1,
-      text: newMessage,
-      userName: user.userName,
-      profilePic: user.profilePic,
-      timestamp: new Date(),
-      type: MessageType.user,
-      channelUuid: props.channel.uuid
-    };
+// Reset messages, used when switching between channels multiple times
+const resetMessages = () => {
+  items.value = allMessages.value
+    .filter(message => message.channelUuid === props.channel.uuid)
+    .slice(-10);
 
-    // Add the message to the list
-    allMessages.value.push(message);
-    items.value.push(message);
-    showNotification(newMessage, users.value[0]);
+  showInfiniteScroll.value = false;
 
-    // Scroll to the bottom of the chat
-    nextTick(() => {
-      scrollToBottom();
-    });
-  };
-
-  // Expose the function to the parent component
-  const onMessageSent = (msg: string) => {
-    addMessage(msg);
-  };
-  defineExpose({
-    onMessageSent
+  nextTick(() => {
+    showInfiniteScroll.value = true;
+    if (infiniteScroll.value) {
+      infiniteScroll.value.reset();
+    }
   });
+};
+
+// Watch for channel
+watch(() => props.channel, () => {
+  resetMessages();
+}, { immediate: true });
+
+// Reset messages when switching channels
+watch(activeChannel, async (newChannel, oldChannel) => {
+  if (newChannel !== oldChannel) {
+    // Reset messages for the new channel
+    items.value = [];
+    showInfiniteScroll.value = true;
+    //await onLoad(0, () => {});
+  }
+}, { immediate: true });
+
 </script>
 
 <style scoped>
-  .message-alert {
-    background-color: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 5px;
-  }
+.message-alert {
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+}
 </style>

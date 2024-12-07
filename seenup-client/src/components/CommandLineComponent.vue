@@ -55,16 +55,17 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch, nextTick } from 'vue';
+  import {computed, ref, watch, nextTick} from 'vue';
 
   import { useQuasar } from 'quasar';
 
   import { commands as allCommands } from 'assets/commands';
-  import { Channel} from 'components/models';
+  import {Channel, User} from 'components/models';
   import CommandSuggestionsBox from 'components/CommandSuggestionBox.vue';
   import UserSuggestionsBox from 'components/UserSuggestionBox.vue';
 
   import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
+  import {api} from 'boot/axios';
 
   const props = defineProps({
     currentChannel: {
@@ -86,6 +87,28 @@
 
   const activeChannel = computed(() => channelsStore.active);
 
+  const users = ref<User[]>([]);
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/auth/users', {
+        params: { channel: channelsStore.active }
+      });
+      users.value = response.data;
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
+  };
+
+  watch(
+    activeChannel,
+    async (newChannel, oldChannel) => {
+      if (newChannel !== oldChannel) {
+        await fetchUsers();
+      }
+    },
+    { immediate: true }
+  );
+
   // Methods
   const send = async () => {
     if (!activeChannel.value) return;
@@ -97,7 +120,6 @@
 
   const isSmallScreen = computed(() => $q.screen.lt.sm);
   const commands = computed(() => allCommands.filter(cmd => cmd.type === props.currentChannel.type));
-  const users = computed(() => props.currentChannel.users);
   const inputValue = computed({
     get() {
       return editor.value.replace(/<[^>]*>?/gm, '');
@@ -150,7 +172,7 @@
     let charIndex = 0;
 
     const dialog = $q.dialog({
-      title: `<div class="text-primary">${user.userName}</div>`,
+      title: `<div class="text-primary">${user?.nickname}</div>`,
       message: baseMessage,
       position: 'bottom',
       persistent: false,
