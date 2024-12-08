@@ -17,7 +17,7 @@
   </div>
 
   <!-- System Message -->
-  <div v-if="type === MessageType.system" class="col bg-deep-purple-1 q-py-sm">
+  <div v-if="type === MessageType.system && userName" class="col bg-deep-purple-1 q-py-sm">
     <div class="row items-center q-pl-md text-deep-purple-4">
       <q-icon name="visibility" />
       <span class="text-caption q-pl-xs">Only visible to you</span>
@@ -85,6 +85,7 @@
   const authStore = useAuthStore();
   const user = computed(() => authStore.user);
 
+
   const props = defineProps({
       userName: {
         type: String,
@@ -113,7 +114,7 @@
       photo: {
         type: String,
         required: false
-      }
+      },
   });
 
   const profilePicturePath = computed(() => {
