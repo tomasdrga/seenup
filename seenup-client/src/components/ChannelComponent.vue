@@ -1,21 +1,24 @@
 <template>
-  <div v-if="showInfiniteScroll">
-    <q-infinite-scroll ref="infiniteScroll" reverse>
-      <template v-slot:loading>
-        <div class="row justify-center q-my-md">
-          <q-spinner color="deep-purple-4" name="dots" size="40px" />
-        </div>
-      </template>
+  <div v-if="channelsStore.active">
+    <div v-if="showInfiniteScroll">
+      <q-infinite-scroll ref="infiniteScroll" @load="onLoad" reverse>
+        <template v-slot:loading>
+          <div class="row justify-center q-my-md">
+            <q-spinner color="deep-purple-4" name="dots" size="40px" />
+          </div>
+        </template>
 
-      <!--  Generate the chat messages -->
-      <template v-for="(message, index) in messages" :key="index">
-        <q-chat-message v-if="index === 0 || getDayStringSafe(message.created_at) !== getDayStringSafe(messages[index-1].created_at)"
-                        :label="getDayStringSafe(message.created_at)"
-                        style="height: 1rem; padding-top: 0;"
-                        class="text-deep-purple-4"/>
-        <span v-if="message.author">
+        <!--  Generate the chat messages -->
+
+        <template v-for="(message, index) in messages" :key="index">
+          <q-chat-message v-if="index === 0 || getDayStringSafe(message.created_at) !== getDayStringSafe(messages[index-1].created_at)"
+                          :label="getDayStringSafe(message.created_at)"
+                          style="height: 1rem; padding-top: 0;"
+                          class="text-deep-purple-4"/>
+          <span v-if="message.author">
           <Message-component
             :time="formatTime(new Date(message.created_at))"
+            :photo="message.author.profile_picture"
             :message="message.content"
             :user-name="message.author.nickname"
             :user-status="message.author.status"
@@ -23,10 +26,34 @@
             :type="message?.messageType"
           />
         </span>
-      </template>
-    </q-infinite-scroll>
+        </template>
+      </q-infinite-scroll>
+    </div>
+  </div>
+  <div v-else>
+    <div class="row justify-center items-center q-ma-md">
+      <div class="text-center">
+        <h2 class="text-weight-bold text-primary">Welcome to our Server!</h2>
+        <p class="text-h6 q-mt-sm text-primary">Here are some commands to get you started:</p>
+        <div class="q-mt-lg bg-grey rounded-borders command-guide">
+          <!-- Command Guide -->
+          <q-list bordered class="q-my-md rounded-borders ">
+            <q-item v-for="(command, index) in commands" :key="index" class="q-py-sm command-item">
+              <q-item-section avatar>
+                <q-icon :name="command.type === 'private' ? 'lock' : 'tag'" size="xs" class="text-primary" />
+              </q-item-section>
+              <q-item-section class="q-pr-xl">
+                <q-item-label class="text-weight-bold text-primary">{{ command.name }}</q-item-label>
+                <q-item-label caption class="text-accent">{{ command.description }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
 
 <script setup lang="ts">
 import {computed, nextTick, onMounted, ref, watch} from 'vue';
@@ -41,41 +68,54 @@ import { formatTime ,getDayStringSafe, scrollToBottom } from './channel-helpers'
 import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 import {useAuthStore} from 'stores/module-auth';
 import { userNotificationSetting } from './SettingsDialog.vue';
+import {commands} from 'assets/commands';
 
 const authStore = useAuthStore();
 let user = computed(() => authStore.user);
 
 const channelsStore = useChannelsStore();
 
-const formatListMessage = (messageContent: string, usersList: string[], currentUserNickname: string) => {
-  const otherUsers = usersList.filter(username => username !== currentUserNickname);
-
-  const formattedUsers = otherUsers.map(username => `@${username}`);
-
-  formattedUsers.push('You');
-
-  const finalMessage = formattedUsers.length > 1
-    ? formattedUsers.slice(0, -1).join(', ') + ' and ' + formattedUsers[formattedUsers.length - 1]
-    : formattedUsers[0];
-
-  return `Users here: ${finalMessage}`;
-};
+let lastKnownMessages = ref([]);
 
 const messages = computed(() => {
-  if (!channelsStore.currentMessages || channelsStore.currentMessages.length === 0) {
-    return []; // Return an empty array or handle it as needed
+  if (user.value?.status === 'offline') {
+    console.log('User is offline, retaining last known messages.');
+    return lastKnownMessages.value; // Return the last known messages
   }
-  return channelsStore.currentMessages.map(message => {
+
+  if (!channelsStore.currentMessages || channelsStore.currentMessages.length === 0) {
+    return []; // Return an empty array if there are no current messages
+  }
+
+  const updatedMessages = channelsStore.currentMessages.map(message => {
+    // Handle /list command
     if (message.content.trim().startsWith('/list')) {
-      if (message.author.id === user.value?.id) {
-        const formattedMessage = message.content.replace('/list', '').trim();
-        return { ...message, content: formattedMessage, messageType: MessageType.system};
-      }
-      return null;
+      const contentWithoutCommand = message.content.replace('/list', '').trim(); // Remove /list command
+      const formattedContent = `${contentWithoutCommand}`;
+      return {
+        ...message,
+        content: formattedContent,
+        messageType: MessageType.system
+      };
     }
-    return {...message, messageType: MessageType.user};
+
+    return { ...message, messageType: MessageType.user };
   }).filter(message => message !== null);
+
+  // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+  lastKnownMessages.value = updatedMessages; // Save the updated messages
+  return updatedMessages;
 });
+
+// Handling the load event in an infinite scroll
+// const onLoad = (index: number, done: () => void) => {
+//   setTimeout(() => {
+//     //ChannelService.loadMessages(channelsStore.active!, '5');
+//     console.log('loadujeme')
+//     done();
+//   }, 10000);
+// };
+
 
 const props = defineProps({
   currentServer: {
@@ -91,30 +131,6 @@ const props = defineProps({
 const infiniteScroll = ref<QInfiniteScroll | null>(null);
 const showInfiniteScroll = ref(false);
 const items = ref<Message[]>([]);
-
-
-// Fetch users from the database
-// const fetchUsers = async () => {
-//   try {
-//     const response = await api.get('/auth/users', { params: { channel: activeChannel.value } });
-//     for (let i = 0; i < response.data.length; i++) {
-//       users.value.push(response.data[i].nickname);
-//     }
-//   } catch (error) {
-//
-//     console.error('Failed to load users:', error);
-//   }
-// };
-// const activeChannel = computed(() => channelsStore.active);
-// watch(
-//   activeChannel,
-//   async (newChannel, oldChannel) => {
-//     if (newChannel !== oldChannel) {
-//       await fetchUsers();
-//     }
-//   },
-//   { immediate: true }
-// );
 
 const requestNotificationPermission = async () => {
   console.log('requesting notification')
@@ -132,7 +148,6 @@ const $q = useQuasar();
 
 const sendNotification = (message: string) => {
   if (Notification.permission === 'granted' && !$q.appVisible) {
-    console.log('Posielmaeee')
     const notification = new Notification('New message', {
       body: message,
       icon: require('../../public/nowty_face.png')
@@ -145,7 +160,7 @@ const sendNotification = (message: string) => {
 };
 let permissionGranted = ref(false);
 const startNotificationInterval = async () => {
-   permissionGranted.value = await requestNotificationPermission();
+  permissionGranted.value = await requestNotificationPermission();
 };
 
 // Initialize notifications when component mounts
@@ -162,11 +177,8 @@ onMounted(async () => {
 })
 
 function checkMention (message: string) {
-  console.log('checking mention');
-  console.log('user', user.value);
   if (user.value) { // Ensure user is defined
     const regex = new RegExp(`@${user.value.nickname}\\b`, 'i');
-    console.log(regex.test(message));
     return regex.test(message);
   }
   return false;
@@ -174,7 +186,7 @@ function checkMention (message: string) {
 watch(() => channelsStore.notifications, async () => {
   await nextTick();
   if (!permissionGranted.value || $q.appVisible) return;
-
+  console.log('Checking notifications', channelsStore.notifications);
   for (const notification of channelsStore.notifications) {
     if (
       notification.content.startsWith('/') ||
@@ -193,48 +205,13 @@ watch(() => channelsStore.notifications, async () => {
       }
       continue;
     }
+    console.log('sending notification')
     sendNotification(`${notification.author.nickname}: ${notification.content}`);
     channelsStore.CLEAR_NOTIFICATIONS();
   }
 
 }, { deep: true });
 
-// watch(() => channelsStore.messages, async () => {
-//   await nextTick();
-//
-//   if (!permissionGranted.value || $q.appVisible) return;
-//
-//   // Iterate over all channels' messages
-//   for (const [channel, messages] of Object.entries(channelsStore.messages)) {
-//     if (!messages.length) continue;
-//
-//     const latestMessage = messages[messages.length - 1];
-//     const sender = latestMessage.author.nickname;
-//
-//     // Skip messages based on various conditions
-//     if (
-//       latestMessage.content.startsWith('/') ||
-//       !latestMessage ||
-//       userNotificationSetting.value === 'Off' ||
-//       user.value?.status === 'dnd' ||
-//       user.value?.status === 'offline'
-//     ) continue;
-//
-//     const cleanMessage = latestMessage.content.replace(/<[^>]*>/g, '').trim();
-//     const processedMessage = cleanMessage.length > 25
-//       ? `${cleanMessage.substring(0, 25)}...`
-//       : cleanMessage;
-//
-//     if (userNotificationSetting.value === 'Only mentions') {
-//       if (checkMention(latestMessage.content)) {
-//         sendNotification(`${sender} in ${channel}: ${processedMessage}`);
-//       }
-//       continue;
-//     }
-//
-//     sendNotification(`${sender} in ${channel}: ${processedMessage}`);
-//   }
-// }, { deep: true });
 
 watch(()=> channelsStore.currentMessages, async () => {
   await nextTick();
@@ -263,16 +240,6 @@ watch(() => props.channel, () => {
   resetMessages();
 }, { immediate: true });
 
-// // Reset messages when switching channels
-// watch(activeChannel, async (newChannel, oldChannel) => {
-//   if (newChannel !== oldChannel) {
-//     // Reset messages for the new channel
-//     items.value = [];
-//     showInfiniteScroll.value = true;
-//     //await onLoad(0, () => {});
-//   }
-// }, { immediate: true });
-
 </script>
 
 <style scoped>
@@ -281,4 +248,17 @@ watch(() => props.channel, () => {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   border-radius: 5px;
 }
+.command-guide {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+}
+
+.command-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.command-item:last-child {
+  border-bottom: none; /* Remove bottom border from the last item */
+}
+
 </style>
