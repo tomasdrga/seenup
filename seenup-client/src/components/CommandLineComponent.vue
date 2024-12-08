@@ -226,7 +226,7 @@
   });
 
   watchEffect(() => {
-    console.log("Typing Status Updated:", typingStatus.value);
+    console.log('Typing Status Updated:', typingStatus.value);
   });
 
   const draftMessages = computed(() => activeChannel.value ? channelsStore.draftMessages[activeChannel.value] || {} : {});

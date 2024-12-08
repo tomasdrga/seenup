@@ -68,7 +68,8 @@ export const useChannelsStore = defineStore('channels', {
         },
         getUserStatus: (state) => (userId: number): 'active' | 'dnd' | 'offline' => {
             return state.userStatuses[userId] || 'offline';
-        }
+        },
+        
         allNotifications(state): SerializedMessage[] {
           return state.notifications;
         },
