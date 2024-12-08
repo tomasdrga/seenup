@@ -193,7 +193,7 @@ export default class ChannelsController {
 
             console.log("fetching user channels");
             const user = auth.user!;
-            const channels = await user.related("channels").query();
+            const channels = await user.related("channels").query().wherePivot('is_banned', false);
             console.log(channels);
             const userChannels = channels.map(channel => ({
                 name: channel.name,

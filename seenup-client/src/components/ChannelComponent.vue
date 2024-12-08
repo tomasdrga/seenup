@@ -21,7 +21,7 @@
             :photo="message.author.profile_picture"
             :message="message.content"
             :user-name="message.author.nickname"
-            :user-status="message.author.status"
+            :user-status="getUserStatus(message.author.id)"
             :profile-pic="message?.messageType === MessageType.user ? '/avatars/matko.jpg' : 'nowty_face.png'"
             :type="message?.messageType"
           />
@@ -76,6 +76,10 @@ let user = computed(() => authStore.user);
 const channelsStore = useChannelsStore();
 
 let lastKnownMessages = ref([]);
+
+const getUserStatus = (userId: number) => {
+  return channelsStore.getUserStatus(userId);
+};
 
 const messages = computed(() => {
   if (user.value?.status === 'offline') {

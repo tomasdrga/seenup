@@ -8,6 +8,7 @@ export default class AuthController {
         // if invalid, exception
         const data = await request.validate(RegisterUserValidator)
         const user = await User.create(data)
+    
         // join user to general channel
         const general = await Channel.findByOrFail('name', 'general')
         await user.related('channels').attach([general.id])
@@ -28,6 +29,7 @@ export default class AuthController {
 
     async me({ auth }: HttpContextContract) {
         await auth.user!.load('channels')
+        auth.user!.status = 'active'
         return auth.user
     }
 }

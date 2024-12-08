@@ -40,7 +40,7 @@ export default class ActivityController {
 
         console.log("fetching user channels");
         const user = auth.user!;
-        const channels = await user.related("channels").query();
+        const channels = await user.related("channels").query().wherePivot('is_banned', false);
         const userChannels = channels.map(channel => ({
             name: channel.name,
             isPrivate: channel.isPrivate
@@ -65,6 +65,30 @@ export default class ActivityController {
         logger.info("websocket disconnected", reason);
     }
 
+    public async changeStatus({ socket, auth, logger }: WsContextContract, status: "active" | "dnd" | "offline") {
+        console.log('Received status change request:', status); // Add logging
+
+        if (!status) {
+            socket.emit('error', { error: 'Status is required' });
+            return;
+        }
+
+        const user = auth.user;
+        if (user) {
+            user.status = status;
+            await user.save();
+            console.log(`User ${user.id} changed status to ${status}`);
+
+            if (status === "active") {
+                return socket.nsp.emit("user:online", user);
+            } else {
+                return socket.nsp.emit(`user:${status}`, user);
+            }
+        }
+
+        socket.emit('error', { error: 'User not authenticated' });
+    }
+
     public async onExecuteGeneralCommand(
         { socket, auth ,logger }: WsContextContract,
         command: string,
@@ -74,7 +98,7 @@ export default class ActivityController {
         logger.info("general command executed", command);
         
         command = command.replace(/\r?\n|\r/g, '').trim();
-        name = name.replace(/\r?\n|\r/g, '').trim();
+        if (name) { name = name.replace(/\r?\n|\r/g, '').trim(); }
         if (flag) { flag = flag.replace(/\r?\n|\r/g, '').trim();}
 
         switch (command) {
@@ -101,22 +125,35 @@ export default class ActivityController {
                     if (channel.adminId !== user.id) {
                         await channel.related('users').detach([user.id]);
                         console.log("fetching user channels");
-                        const channels = await user.related("channels").query();
+                        const channels = await user.related("channels").query().wherePivot('is_banned', false);
                         const userChannels = channels.map(channel => ({
                             name: channel.name,
                             isPrivate: channel.isPrivate
                         }));
                         socket.emit("user:channels", userChannels as Channel[]);
-                        return socket.emit('channel:cancel', { name });
+                        return socket.broadcast.emit('channel:cancel', { name });
                     } else {
+                        const users = await channel.related('users').query();
+
                         await channel.delete();
                         console.log("fetching user channels");
-                        const channels = await user.related("channels").query();
+                        const channels = await user.related("channels").query().wherePivot('is_banned', false);
                         const userChannels = channels.map(channel => ({
                             name: channel.name,
                             isPrivate: channel.isPrivate
                         }));
                         socket.emit("user:channels", userChannels as Channel[]);
+
+                        const generalNamespace = socket.nsp.server.of('/');
+                        users.forEach(async (member) => {
+                            const memberChannels = await member.related("channels").query();
+                            const memberUserChannels = memberChannels.map(channel => ({
+                                name: channel.name,
+                                isPrivate: channel.isPrivate
+                            }));
+                            const room = this.getUserRoom(member);
+                            generalNamespace.to(room).emit("user:channels", memberUserChannels as Channel[]);
+                        });
                         return socket.emit('channel:quit', { name });
                     }
                 } else {
@@ -135,19 +172,35 @@ export default class ActivityController {
                     }
 
                     if (channel.adminId == user.id) {
+                        const users = await channel.related('users').query();
+
                         await channel.delete();
+
                         console.log("fetching user channels");
-                        const channels = await user.related("channels").query();
+                        const channels = await user.related("channels").query().wherePivot('is_banned', false);
                         const userChannels = channels.map(channel => ({
                             name: channel.name,
                             isPrivate: channel.isPrivate
                         }));
                         socket.emit("user:channels", userChannels as Channel[]);
+
+                        const generalNamespace = socket.nsp.server.of('/');
+                        users.forEach(async (member) => {
+                            const memberChannels = await member.related("channels").query();
+                            const memberUserChannels = memberChannels.map(channel => ({
+                                name: channel.name,
+                                isPrivate: channel.isPrivate
+                            }));
+                            const room = this.getUserRoom(member);
+                            generalNamespace.to(room).emit("user:channels", memberUserChannels as Channel[]);
+                        });
+
                         return socket.emit('channel:quit', { name });
+                    } else {
+                        return socket.emit('error', 'Channel name not found.');
                     }
-                } else {
-                    return socket.emit('error', 'Channel name not found.');
                 }
+                break;
             default:
                 return socket.emit('error', 'Unknown command.');
         }
@@ -160,7 +213,7 @@ export default class ActivityController {
     ) {
         logger.info("fetching user channels");
         const user = auth.user!;
-        const channels = await user.related("channels").query();
+        const channels = await user.related("channels").query().wherePivot('is_banned', false);
         const userChannels = channels.map(channel => ({
             name: channel.name,
             isPrivate: channel.isPrivate

@@ -9,62 +9,72 @@
             <q-btn @click="dialog = false" flat color="primary" icon="close" class="col-2"/>
           </div>
           <div class="text-primary text-body">
-            <q-list class="row rounded-borders text-weight-bold">
+            <q-scroll-area style="height: calc(100vh - 100px); max-width: 100vw" :visible="false">
+            <q-list class="rounded-borders text-weight-bold">
               <q-expansion-item default-opened label="Channels" style="width: 100%;" class="text-uppercase">
                 <q-btn
-                flat
-                align="left"
-                style="width: 100%;"
-                v-for="(channel, index) in channels"
-                :key="index"
-                class="channel-item"
-                :class="{ 'text-weight-bold': index === 0 }"
-                clickable
-                v-ripple
-                @click="joinChannel(channel.name, channel.isPrivate)">
-
+                  flat
+                  align="left"
+                  style="width: 100%;"
+                  v-for="(channel, index) in sortedChannels"
+                  :key="index"
+                  class="channel-item"
+                  :class="{ 'text-weight-bold': channel.invited }"
+                  clickable
+                  v-ripple
+                  @click="joinChannel(channel.name, channel.isPrivate)"
+                >
                   <q-icon :name="channel.isPrivate ? 'lock' : 'tag'" size="xs" />
-                  <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': index === 0 || index === 2}">{{ channel.name }}</span>
-                  <q-icon v-if="index === 0" name="star" size="xs"/>
+                  <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': channel.invited }">
+                    {{ channel.name }}
+                  </span>
+                  <q-icon v-if="channel.invited" name="mark_email_unread" size="xs" />
                   <q-btn flat icon="more_vert" class="edit-icon q-pa-none" size="xs" @click="icon = true" />
+                  <q-btn flat icon="close" class="leave-icon q-pa-none" size="xs" @click="leaveChannel(channel)" />
                 </q-btn>
               </q-expansion-item>
             </q-list>
+          </q-scroll-area>
           </div>
         </div>
       </q-dialog>
 
       <!-- Left Sidebar -->
       <div class="col-0 col-md-2 full-height gt-sm" id="left-side-bar">
-        <p :class="$q.screen.lt.lg ? 'text-smaller q-pa-md text-weight-bold text-primary text-uppercase' : 'text-h6 q-pa-md text-weight-bold text-primary text-uppercase'">{{ currentServer.name }}</p>
+        <p :class="$q.screen.lt.lg ? 'text-smaller q-pa-md text-weight-bold text-primary text-uppercase' : 'text-h6 q-pa-md text-weight-bold text-primary text-uppercase'">
+          {{ currentServer.name }}
+        </p>
         <div class="text-primary text-body">
-              <q-scroll-area style="height: calc(100vh - 70px); max-width: 100vw" :visible="false">
-          <q-list class="rounded-borders text-weight-bold">
-            <q-expansion-item default-opened label="Channels" style="width: 100%;" class="text-uppercase">
-
-              <q-btn
-                flat
-                align="left"
-                style="width: 100%;"
-                v-for="(channel, index) in channels"
-                :key="index"
-                class="channel-item"
-                :class="{ 'text-weight-bold': index === 0 }"
-                clickable
-                v-ripple
-                @click="joinChannel(channel.name, channel.isPrivate)">
-
-                <q-icon :name="channel.isPrivate ? 'lock' : 'tag'" size="xs" />
-                <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': index === 0 || index === 2}">{{ channel.name }}</span>
-                <q-icon v-if="index === 0" name="star" size="xs"/>
-                <q-btn flat icon="more_vert" class="edit-icon q-pa-none" size="xs" @click="icon = true" />
-                <q-btn flat icon="close" class="leave-icon q-pa-none" size="xs" @click="leaveChannel(channel)" />
-              </q-btn>
-            </q-expansion-item>
-          </q-list>
+          <q-scroll-area style="height: calc(100vh - 100px); max-width: 100vw" :visible="false">
+            <q-list class="rounded-borders text-weight-bold">
+              <q-expansion-item default-opened label="Channels" style="width: 100%;" class="text-uppercase">
+                <q-btn
+                  flat
+                  align="left"
+                  style="width: 100%;"
+                  v-for="(channel, index) in sortedChannels"
+                  :key="index"
+                  class="channel-item"
+                  :class="{ 'text-weight-bold': channel.invited }"
+                  clickable
+                  v-ripple
+                  @click="joinChannel(channel.name, channel.isPrivate)"
+                >
+                  <q-icon :name="channel.isPrivate ? 'lock' : 'tag'" size="xs" />
+                  <span class="text-caption q-pr-sm" :class="{ 'text-weight-bold': channel.invited }">
+                    {{ channel.name }}
+                  </span>
+                  <q-icon v-if="channel.invited" name="mark_email_unread" size="xs" />
+                  <q-btn flat icon="more_vert" class="edit-icon q-pa-none" size="xs" @click="icon = true" />
+                  <q-btn flat icon="close" class="leave-icon q-pa-none" size="xs" @click="leaveChannel(channel)" />
+                </q-btn>
+              </q-expansion-item>
+            </q-list>
           </q-scroll-area>
         </div>
       </div>
+
+
 
       <!-- Main Content -->
       <div class="column col-12 col-md-10" id="channel-container">
@@ -280,6 +290,16 @@ export default defineComponent({
 
     // Computed properties
     const channels = computed(() => channelsStore.getUserChannels);
+
+    const sortedChannels = computed(() => {
+      return channelsStore.getUserChannels.slice().sort((a, b) => {
+        // Sort channels: invited channels come first
+        if (b.invited && !a.invited) return 1;
+        if (a.invited && !b.invited) return -1;
+        return 0; // Preserve order for channels with the same invited status
+      });
+    });
+
     console.log(channels);
     const lastMessageOf = (channel: string) => channelsStore.lastMessageOf(channel);
     const activeChannel = computed(() => channelsStore.active );
@@ -408,6 +428,7 @@ export default defineComponent({
       onSubmit,
       onReset,
       navigateToChannel,
+      sortedChannels,
       channels,
       lastMessageOf,
       activeChannel,

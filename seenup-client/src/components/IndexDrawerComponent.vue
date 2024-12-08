@@ -61,7 +61,7 @@
               <q-item-section>
                 <q-item-label class="text-weight-bold text-no-wrap">{{ user?.first_name + ' ' + user?.last_name }}</q-item-label>
                 <q-item-label caption class="text-purple-4">
-                  <q-icon :name="userStatus.icon" :color="userStatus.color"></q-icon>{{ user?.status }}
+                    <q-icon :name="userStatus.icon" :color="userStatus.color"></q-icon>{{ userStatusText }}
                 </q-item-label>
               </q-item-section>
             </q-item>
@@ -112,10 +112,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed} from 'vue';
-import { api } from 'boot/axios';
-
+import { defineComponent, computed } from 'vue';
 import { useAuthStore } from 'stores/module-auth';
+import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 
 
 export default defineComponent({
@@ -130,17 +129,21 @@ export default defineComponent({
     const authStore = useAuthStore();
     const user = computed(() => authStore.user);
     const userStatus = computed(() => {
-      switch (user.value?.status) {
-        case 'active':
-          return { icon: 'radio_button_checked', color: 'green' };
-        case 'offline':
-          return { icon: 'radio_button_checked', color: 'grey-6' };
-        case 'dnd':
-          return { icon: 'nightlight', color: 'primary' };
-        default:
-          return { icon: 'mdi-account-question', color: 'grey' };
-      }
-    });
+    const channelsStore = useChannelsStore();
+    const status = user.value?.id !== undefined ? channelsStore.getUserStatus(user.value.id) : 'unknown';
+    switch (status) {
+      case 'active':
+        return { icon: 'radio_button_checked', color: 'green', text: 'Active' };
+      case 'dnd':
+        return { icon: 'nightlight', color: 'primary', text: 'Do Not Disturb' };
+      case 'offline':
+        return { icon: 'radio_button_checked', color: 'grey-6', text: 'Offline' };
+      default:
+        return { icon: 'warning', color: 'red', text: 'Unknown' };
+    }
+  });
+
+  const userStatusText = computed(() => userStatus.value.text);
 
     const profilePicturePath = computed(() => {
       const basePath = '/avatars/';
@@ -150,17 +153,16 @@ export default defineComponent({
     const updateLeftDrawerOpen = (value: boolean) => {
       emit('update:leftDrawerOpen', value);
     };
+    
     const logout = async () => {
       await authStore.logout();
     };
+
     const changeStatus = async (status: 'active' | 'offline' | 'dnd') => {
       try {
-        await api.post('/auth/change-status', { status });
-        if (user.value) {
-          user.value.status = status;
-        }
+        useChannelsStore().changeStatus(status);
       } catch (error) {
-      console.error('Failed to change status:', error);
+        console.error('Failed to change status:', error);
       }
     };
 
@@ -169,6 +171,7 @@ export default defineComponent({
       userStatus,
       updateLeftDrawerOpen,
       changeStatus,
+      userStatusText,
       profilePicturePath,
       logout
     };

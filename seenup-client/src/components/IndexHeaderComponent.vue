@@ -34,20 +34,20 @@
           </q-btn>
           <q-btn v-if="$q.screen.lt.sm" flat class="q-pa-none">
             <q-avatar rounded size="lg">
-              <img :src="user.profilePic" alt="Profile Pic" />
+              <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
             </q-avatar>
             <q-menu anchor="bottom right" self="bottom left" :offset="[10, 0]" class="q-pt-md text-primary">
               <q-list>
                 <q-item clickable v-close-popup>
                   <q-item-section class="col-3">
                     <q-avatar rounded size="lg">
-                      <img :src="user.profilePic" alt="Profile Pic" />
+                      <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="text-weight-bold text-no-wrap">{{ user.userName }}</q-item-label>
+                    <q-item-label class="text-weight-bold text-no-wrap">{{ user?.first_name + ' ' + user?.last_name }}</q-item-label>
                     <q-item-label caption class="text-purple-4">
-                      <q-icon :name="userStatus.icon" :color="userStatus.color"></q-icon>{{ user.status }}
+                        <q-icon :name="userStatus.icon" :color="userStatus.color"></q-icon>{{ userStatusText }}
                     </q-item-label>
                   </q-item-section>
                 </q-item>
@@ -87,7 +87,7 @@
                   <q-item-section class="text-right">Settings</q-item-section>
                 </q-item>
                 <q-separator />
-                <q-item clickable v-close-popup to="/login">
+                <q-item clickable v-close-popup to="/login" @click="logout">
                   <q-item-section class="text-right">Sign out</q-item-section>
                 </q-item>
               </q-list>
@@ -101,32 +101,55 @@
 
 <script lang="ts">
     import { defineComponent, computed } from 'vue';
+    import { useAuthStore } from 'stores/module-auth';
     import { useQuasar } from 'quasar';
-    import { users } from 'assets/users';
+    import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 
     export default defineComponent({
         emits: ['open-new-channel-dialog', 'change-status', 'open-settings'],
         setup() {
-            const $q = useQuasar();
-            const user = users.value[0];
+          const $q = useQuasar();
+          const authStore = useAuthStore();
+          const user = computed(() => authStore.user);
 
-            const userStatus = computed(() => {
-            switch (user.status) {
-                case 'Active':
-                return { icon: 'radio_button_checked', color: 'green' };
-                case 'Offline':
-                return { icon: 'radio_button_checked', color: 'grey-6' };
-                case 'Do not disturb':
-                return { icon: 'nightlight', color: 'primary' };
-                default:
-                return { icon: 'mdi-account-question', color: 'grey' };
+          const userStatus = computed(() => {
+          const channelsStore = useChannelsStore();
+          const status = user.value?.id !== undefined ? channelsStore.getUserStatus(user.value.id) : 'unknown';
+          switch (status) {
+            case 'active':
+              return { icon: 'radio_button_checked', color: 'green', text: 'Active' };
+            case 'dnd':
+              return { icon: 'nightlight', color: 'primary', text: 'Do Not Disturb' };
+            case 'offline':
+              return { icon: 'radio_button_checked', color: 'grey-6', text: 'Offline' };
+            default:
+              return { icon: 'warning', color: 'red', text: 'Unknown' };
+          }
+        });
+
+        const userStatusText = computed(() => userStatus.value.text);
+
+  
+          const logout = async () => {
+            await authStore.logout();
+          };
+
+          const changeStatus = async (status: 'active' | 'offline' | 'dnd') => {
+            try {
+              useChannelsStore().changeStatus(status);
+            } catch (error) {
+              console.error('Failed to change status:', error);
             }
-            });
+          };
+           
 
             return {
                 $q,
                 user,
                 userStatus,
+                changeStatus,
+                logout,
+                userStatusText,
             };
         },
     });

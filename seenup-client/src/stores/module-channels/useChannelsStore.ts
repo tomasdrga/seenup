@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia';
-import { SerializedMessage, RawMessage } from 'src/contracts';
+import { SerializedMessage, RawMessage, User } from 'src/contracts';
 import { channelService } from 'src/services';
 import { activityService } from 'src/services';
-import { nextTick } from 'vue';
+import { nextTick, reactive } from 'vue';
 
 export interface Channel {
     name: string;
     isPrivate: boolean;
+    users?: string[];
+    invited?: boolean;
 }
 
 export interface ChannelsStateInterface {
@@ -17,6 +19,9 @@ export interface ChannelsStateInterface {
     activeType: string | null;
     channels: Channel[];
     userChannels: Channel[];
+    userStatuses: { [key: number]: 'active' | 'dnd' | 'offline' };
+    typingStatus: { [channel: string]: { [user: string]: boolean } };
+    draftMessages: { [channel: string]: { [user: string]: string } };
     notifications: SerializedMessage[];
 }
 
@@ -32,6 +37,9 @@ export const useChannelsStore = defineStore('channels', {
         activeType: localStorage.getItem(ACTIVE_CHANNEL_TYPE_KEY),
         channels: [],
         userChannels: [],
+        userStatuses: reactive({}),
+        typingStatus: reactive({}),
+        draftMessages: {},
         notifications: [],
     }),
 
@@ -58,6 +66,9 @@ export const useChannelsStore = defineStore('channels', {
                 type: activeChannelType
             };
         },
+        getUserStatus: (state) => (userId: number): 'active' | 'dnd' | 'offline' => {
+            return state.userStatuses[userId] || 'offline';
+        }
         allNotifications(state): SerializedMessage[] {
           return state.notifications;
         },
@@ -102,6 +113,39 @@ export const useChannelsStore = defineStore('channels', {
         ADD_NOTIFICATION(message: SerializedMessage) {
           this.notifications.push(message);
         },
+
+        SET_USERS(channel: string, users: string[]) {
+            console.log('Setting users for channel:', channel, users);
+            const channelIndex = this.channels.findIndex(ch => ch.name === channel);
+            if (channelIndex !== -1) {
+                this.channels[channelIndex].users = users;
+            } else {
+                console.error(`Channel ${channel} not found`);
+            }
+
+            console.log('AFTER', this.channels[channelIndex].users)
+        },
+
+        updateTypingStatus(channel: string, user: string, isTyping: boolean) {
+            if (!this.typingStatus[channel]) {
+                this.typingStatus[channel] = {};
+            }
+            this.typingStatus[channel][user] = isTyping;
+        },
+
+        resetTypingStatus(channel: string, user: string) {
+            if (this.typingStatus[channel]) {
+                this.typingStatus[channel][user] = false;
+            }
+        },
+
+        updateDraftMessage(channel: string, user: string, draft: string) {
+            if (!this.draftMessages[channel]) {
+                this.draftMessages[channel] = {};
+            }
+            this.draftMessages[channel][user] = draft;
+        },
+
         CLEAR_NOTIFICATIONS() {
           this.notifications = [];
         },
@@ -114,15 +158,23 @@ export const useChannelsStore = defineStore('channels', {
                 this.LOADING_START();
                 const service = channelService.join(channel);
                 const messages = await service.loadMessages();
+                this.channels.push({ name: channel, isPrivate: isPrivate, users: [] });
+
+                const channelIndex = this.userChannels.findIndex(ch => ch.name === channel);
+                if (channelIndex !== -1 && this.userChannels[channelIndex].invited) {
+                    this.userChannels[channelIndex].invited = false;
+                }
+
+                service.getUsers(channel);
                 this.LOADING_SUCCESS(channel, messages);
                 // Add the channel to the channels array
-                this.channels.push({ name: channel, isPrivate: isPrivate });
             } catch (err) {
                 this.LOADING_ERROR(err as Error);
                 throw err;
             }
         },
         async leave(channel: string | null) {
+            console.log(`channelsStore.leave called with channel: ${channel}`);
             const leaving: string[] = channel !== null ? [channel] : this.joinedChannels.map(c => c.name);
 
             leaving.forEach((c) => {
@@ -169,15 +221,25 @@ export const useChannelsStore = defineStore('channels', {
                 throw err;
             }
         },
-        async updateUserChannels(channels: Channel[]) {
+        async updateUserChannels(channels: Channel[], newChannelName?: string) {
             try {
                 this.LOADING_START();
                 console.log('Updating user channels:', channels);
+
+                // Update channels to set "invited" for the new channel
+                channels = channels.map(channel => ({
+                    ...channel,
+                    invited: channel.name === newChannelName ? true : channel.invited ?? false,
+                }));
+
+                // Sort by "invited" status
+                channels = channels.sort((a, b) => (Number(b.invited ?? 0) - Number(a.invited ?? 0)));
+
                 this.$patch({ userChannels: channels });
                 await nextTick();
+
                 console.log('User channels updated:', this.userChannels);
                 this.loading = false;
-                console.log('User channels updated:', this.userChannels);
             } catch (err) {
                 this.LOADING_ERROR(err as Error);
                 throw err;
@@ -191,5 +253,44 @@ export const useChannelsStore = defineStore('channels', {
                 throw new Error(`Not connected to channel: ${channel}`);
             }
         },
+        updateUserStatuses(onlineUsers: User[]) {
+            const newStatuses: { [key: number]: 'active' | 'dnd' | 'offline' } = {};
+
+            // Set all users to offline initially
+            for (const userId in this.userStatuses) {
+                newStatuses[userId] = 'offline';
+            }
+
+            // Update the status of online users
+            onlineUsers.forEach(user => {
+                if (user.status === 'dnd') {
+                    newStatuses[user.id] = 'dnd';
+                } else {
+                    newStatuses[user.id] = 'active';
+                }
+            });
+
+            // Only update if there are changes
+            for (const userId in newStatuses) {
+                if (this.userStatuses[userId] !== newStatuses[userId]) {
+                    this.userStatuses[userId] = newStatuses[userId];
+                }
+            }
+        },
+        updateUserStatus(user: User, status: 'active' | 'dnd' | 'offline') {
+            console.log('Updating user status:', user, status);
+            if (this.userStatuses[user.id] !== status) {
+                this.userStatuses[user.id] = status;
+            }
+        },
+        async changeStatus(status: 'active' | 'dnd' | 'offline') {
+            const service = activityService;
+            if (service) {
+                return service.changeStatus(status);
+            } else {
+                throw new Error('Not connected to general service');
+            }
+        }
+
     },
 });
