@@ -4,30 +4,30 @@ import { inject } from "@adonisjs/core/build/standalone";
 import ChannelController from '../Http/ChannelsController';
 @inject(["Repositories/MessageRepository"])
 export default class MessageController {
-    constructor(private messageRepository: MessageRepositoryContract) { }
+  constructor(private messageRepository: MessageRepositoryContract) { }
 
-    public async loadMessages({ params }: WsContextContract) {
-        return this.messageRepository.getAll(params.name);
+  public async loadMessages({ params }: WsContextContract) {
+    return this.messageRepository.getAll(params.name);
+  }
+
+  public async addMessage(
+    { params, socket, auth }: WsContextContract,
+    content: string
+  ) {
+    if (content.startsWith('/')) {
+      return this.parseAndExecuteCommand(content, params, socket, auth);
     }
 
-    public async addMessage(
-        { params, socket, auth }: WsContextContract,
-        content: string
-    ) {
-        if (content.startsWith('/')) {
-            return this.parseAndExecuteCommand(content, params, socket, auth);
-        }
+    const message = await this.messageRepository.create(
+      params.name,
+      auth.user!.id,
+      content
+    );
 
-        const message = await this.messageRepository.create(
-            params.name,
-            auth.user!.id,
-            content
-        );
+    socket.broadcast.emit("message", message);
 
-        socket.broadcast.emit("message", message);
-
-        return message;
-    }
+    return message;
+  }
 
   private async parseAndExecuteCommand(
     content: string,
@@ -39,18 +39,29 @@ export default class MessageController {
     const channelsController = new ChannelController();
 
     switch (command) {
+      case '/join':
+        if (channelName) {
+          return channelsController.joinOrCreateChannel(params, socket, auth, channelName, privacyFlag);
+        } else {
+          return socket.emit('error', 'Please specify a channel name for the /join command.');
+        }
+      case '/leave':
+        const currentChannel = params.name;
+        return socket.emit('channel:leave', { channelName: currentChannel });
+
+
       case '/invite':
-          if (channelName) {
-              return channelsController.inviteUser(params, socket, auth, channelName);
-          } else {
-              return socket.emit('error', 'Please specify a nickname for the /invite command.');
-          }
+        if (channelName) {
+          return channelsController.inviteUser(params, socket, auth, channelName);
+        } else {
+          return socket.emit('error', 'Please specify a nickname for the /invite command.');
+        }
       case '/revoke':
-          if (channelName) {
-              return channelsController.revokeUser(params, socket, auth, channelName);
-          } else {
-              return socket.emit('error', 'Please specify a nickname for the /revoke command.');
-          }
+        if (channelName) {
+          return channelsController.revokeUser(params, socket, auth, channelName);
+        } else {
+          return socket.emit('error', 'Please specify a nickname for the /revoke command.');
+        }
 
       case '/list':
         const message = await this.messageRepository.create(
@@ -70,4 +81,3 @@ export default class MessageController {
 
 
 }
-

@@ -17,11 +17,12 @@ export interface ChannelsStateInterface {
     messages: { [channel: string]: SerializedMessage[] };
     active: string | null;
     activeType: string | null;
-    channels: Channel[]; // Add channels array
+    channels: Channel[];
     userChannels: Channel[];
     userStatuses: { [key: number]: 'active' | 'dnd' | 'offline' };
     typingStatus: { [channel: string]: { [user: string]: boolean } };
     draftMessages: { [channel: string]: { [user: string]: string } };
+    notifications: SerializedMessage[];
 }
 
 const ACTIVE_CHANNEL_KEY = 'activeChannel';
@@ -39,6 +40,7 @@ export const useChannelsStore = defineStore('channels', {
         userStatuses: reactive({}),
         typingStatus: reactive({}),
         draftMessages: {},
+        notifications: [],
     }),
 
     getters: {
@@ -67,6 +69,9 @@ export const useChannelsStore = defineStore('channels', {
         getUserStatus: (state) => (userId: number): 'active' | 'dnd' | 'offline' => {
             return state.userStatuses[userId] || 'offline';
         }
+        allNotifications(state): SerializedMessage[] {
+          return state.notifications;
+        },
     },
 
     actions: {
@@ -100,8 +105,15 @@ export const useChannelsStore = defineStore('channels', {
             if (!this.messages[channel]) {
                 this.messages[channel] = [];
             }
-        this.messages[channel].push(message);
+            this.messages[channel].push(message);
+          if (this.active !== channel) {
+            this.ADD_NOTIFICATION(message);
+          }
         },
+        ADD_NOTIFICATION(message: SerializedMessage) {
+          this.notifications.push(message);
+        },
+
         SET_USERS(channel: string, users: string[]) {
             console.log('Setting users for channel:', channel, users);
             const channelIndex = this.channels.findIndex(ch => ch.name === channel);
@@ -134,8 +146,12 @@ export const useChannelsStore = defineStore('channels', {
             this.draftMessages[channel][user] = draft;
         },
 
+        CLEAR_NOTIFICATIONS() {
+          this.notifications = [];
+        },
 
-        async join(channel: string, isPrivate: boolean) {
+
+      async join(channel: string, isPrivate: boolean) {
             console.log(`channelsStore.join called with channel: ${channel}`);
             console.log(`channelsStore.join called with isPrivate: ${isPrivate}`);
             try {

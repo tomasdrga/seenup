@@ -3,7 +3,7 @@
   <div v-if="type === MessageType.user && !isUserMentioned" class="row no-wrap q-pl-md q-py-md" id="message">
     <div class="q-pr-md">
       <q-avatar rounded class="q-mt-xs relative-position">
-        <img :src="profilePic" alt="Profile Pic" />
+        <img :src="profilePicturePath" alt="Profile Pic" />
         <q-icon :name="userStatus.icon" :color="userStatus.color" class="custom-badge q-pa-none absolute" size="xs"/>
       </q-avatar>
     </div>
@@ -110,7 +110,17 @@
         type: String as PropType<MessageType>,
         required: true
       },
+      photo: {
+        type: String,
+        required: false
+      }
   });
+
+  const profilePicturePath = computed(() => {
+    const basePath = '/avatars/';
+    return props.photo ? `${basePath}${props.photo}` : 'seenup-client/public/nowty_face.png';
+  });
+
 
   let userName = props.userName;
   if(props.type === MessageType.system) {

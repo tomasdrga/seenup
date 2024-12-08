@@ -17,7 +17,6 @@
 | import './routes/customer'
 |
 */
-import Ws from "@ioc:Ruby184/Socket.IO/Ws";
 
 import Route from '@ioc:Adonis/Core/Route'
 

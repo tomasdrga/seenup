@@ -81,9 +81,25 @@
         <!-- Top Bar -->
         <div class="col-auto text-primary q-pt-md top-bar max-width">
           <div class="fix-top full-width text-h6 q-pl-md text-weight-bold border-bottom content-center text-uppercase">
-            <q-btn @click="dialog = true" color="primary" flat class="lt-md q-pa-none" icon="menu" size="sm"/>
-            #{{ activeChannel }}
+            <div class="row items-center no-wrap">
+              <!-- Icon -->
+              <q-icon v-if="activeChannel" :name="activeChannelType === 'Private' ? 'lock' : 'tag'" size="sm" />
+
+              <!-- Channel Name -->
+              <span>{{ activeChannel || 'Welcome' }}</span>
+
+              <!-- Button -->
+              <q-btn
+                @click="dialog = true"
+                color="primary"
+                flat
+                class="lt-md q-pa-none q-ml-sm"
+                icon="menu"
+                size="sm"
+              />
+            </div>
           </div>
+
           <q-tabs align="left">
             <q-route-tab :to="`/client/${currentServer.uuid}/${currentChannel.uuid}`" id="message-tab">
               <div class="row items-center">
@@ -286,7 +302,11 @@ export default defineComponent({
 
     console.log(channels);
     const lastMessageOf = (channel: string) => channelsStore.lastMessageOf(channel);
-    const activeChannel = computed(() => channelsStore.active);
+    const activeChannel = computed(() => channelsStore.active );
+    const activeChannelType = computed(() => {
+      const active = channels.value.find(channel => channel.name === activeChannel.value);
+      return active?.isPrivate ? 'Private' : 'Public';
+    });
 
     const setActiveChannel = (channel: string, isPrivate: boolean) => {
       channelsStore.SET_ACTIVE(channel, isPrivate);
@@ -412,6 +432,7 @@ export default defineComponent({
       channels,
       lastMessageOf,
       activeChannel,
+      activeChannelType,
       setActiveChannel,
       joinChannel,
       leaveChannel,

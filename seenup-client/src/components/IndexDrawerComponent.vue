@@ -48,14 +48,14 @@
       </q-btn>
       <q-btn flat class="q-pa-none">
         <q-avatar rounded size="lg">
-          <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
+          <img :src="profilePicturePath" alt="Profile Pic" />
         </q-avatar>
         <q-menu anchor="bottom right" self="bottom left" :offset="[10, 0]" class="q-pt-md text-primary">
           <q-list>
             <q-item clickable v-close-popup>
               <q-item-section class="col-3">
                 <q-avatar rounded size="lg">
-                  <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
+                  <img :src="profilePicturePath" alt="Profile Pic" />
                 </q-avatar>
               </q-item-section>
               <q-item-section>
@@ -116,6 +116,7 @@ import { defineComponent, computed } from 'vue';
 import { useAuthStore } from 'stores/module-auth';
 import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 
+
 export default defineComponent({
   props: {
     leftDrawerOpen: {
@@ -127,7 +128,6 @@ export default defineComponent({
   setup(props, { emit }) {
     const authStore = useAuthStore();
     const user = computed(() => authStore.user);
-
     const userStatus = computed(() => {
     const channelsStore = useChannelsStore();
     const status = user.value?.id !== undefined ? channelsStore.getUserStatus(user.value.id) : 'unknown';
@@ -144,6 +144,11 @@ export default defineComponent({
   });
 
   const userStatusText = computed(() => userStatus.value.text);
+
+    const profilePicturePath = computed(() => {
+      const basePath = '/avatars/';
+      return user.value?.profile_picture ? `${basePath}${user.value?.profile_picture}` : 'seenup-client/public/nowty_face.png';
+    });
 
     const updateLeftDrawerOpen = (value: boolean) => {
       emit('update:leftDrawerOpen', value);
@@ -167,6 +172,7 @@ export default defineComponent({
       updateLeftDrawerOpen,
       changeStatus,
       userStatusText,
+      profilePicturePath,
       logout
     };
   },

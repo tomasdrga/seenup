@@ -12,6 +12,7 @@ class ChannelSocketManager extends SocketManager {
 
         this.socket.on('message', (message: SerializedMessage) => {
             channelsStore.NEW_MESSAGE(channel, message);
+            channelsStore.ADD_NOTIFICATION(message);
         });
 
         this.socket.on('message:list', (message: SerializedMessage) => {
@@ -98,33 +99,33 @@ class ChannelSocketManager extends SocketManager {
 }
 
 class ChannelService {
-    private channels: Map<string, ChannelSocketManager> = new Map();
+  private channels: Map<string, ChannelSocketManager> = new Map();
 
-    public join(name: string): ChannelSocketManager {
-        console.log(`ChannelService.join called with name: ${name}`);
-        if (this.channels.has(name)) {
-            throw new Error(`User is already joined in channel "${name}"`);
-        }
-
-        const channel = new ChannelSocketManager(`/channels/${name}`);
-        this.channels.set(name, channel);
-        return channel;
+  public join(name: string): ChannelSocketManager {
+    console.log(`ChannelService.join called with name: ${name}`);
+    if (this.channels.has(name)) {
+      throw new Error(`User is already joined in channel "${name}"`);
     }
 
-    public leave(name: string): boolean {
-        const channel = this.channels.get(name);
+    const channel = new ChannelSocketManager(`/channels/${name}`);
+    this.channels.set(name, channel);
+    return channel;
+  }
 
-        if (!channel) {
-            return false;
-        }
+  public leave(name: string): boolean {
+    const channel = this.channels.get(name);
 
-        channel.destroy();
-        return this.channels.delete(name);
+    if (!channel) {
+      return false;
     }
 
-    public in(name: string): ChannelSocketManager | undefined {
-        return this.channels.get(name);
-    }
+    channel.destroy();
+    return this.channels.delete(name);
+  }
+
+  public in(name: string): ChannelSocketManager | undefined {
+    return this.channels.get(name);
+  }
 }
 
 export default new ChannelService();
