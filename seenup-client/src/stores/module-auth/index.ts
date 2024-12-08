@@ -21,19 +21,6 @@ export const useAuthStore = defineStore('auth', {
         this.status = 'pending';
         this.errors = [];
 
-        // Check if the network is offline
-        if (!navigator.onLine) {
-          await this.loadUserFromCache();
-          if (this.user) {
-            this.status = 'success';
-            return true;
-          } else {
-            this.status = 'error';
-            this.errors = [{ message: 'No network and no cached user data available.' }];
-            return false;
-          }
-        }
-
         try {
           console.log('Calling authService.me()');
           const user = await authService.me();
@@ -84,31 +71,6 @@ export const useAuthStore = defineStore('auth', {
           this.status = 'error';
           this.errors = [{ message: (err as Error).message }];
           throw err;
-        }
-      },
-
-
-      async loadUserFromCache() {
-        try {
-          const cache = await caches.open('user-data-cache');
-
-
-          const cachedRequests = await cache.keys();
-          cachedRequests.forEach((request) => {
-            console.log('Cached request URL:', request.url);
-          });
-
-          const cachedResponse = await cache.match('http://localhost:3333/auth/me');
-          if (cachedResponse) {
-            const cachedUser = await cachedResponse.json();
-            console.log('Cached user data:', cachedUser);
-
-            this.user = cachedUser;
-          } else {
-            console.log('No cached user data found for /auth/me');
-          }
-        } catch (error) {
-          console.error('Error loading user from cache:', error);
         }
       },
 

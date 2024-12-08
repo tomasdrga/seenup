@@ -45,34 +45,17 @@ import { userNotificationSetting } from './SettingsDialog.vue';
 const authStore = useAuthStore();
 let user = computed(() => authStore.user);
 
-if (!user.value) {
-  authStore.loadUserFromCache();
-}
-
 const channelsStore = useChannelsStore();
 
-const formatListMessage = (messageContent: string, usersList: string[], currentUserNickname: string) => {
-  const otherUsers = usersList.filter(username => username !== currentUserNickname);
-
-  const formattedUsers = otherUsers.map(username => `@${username}`);
-
-  formattedUsers.push('You');
-
-  const finalMessage = formattedUsers.length > 1
-    ? formattedUsers.slice(0, -1).join(', ') + ' and ' + formattedUsers[formattedUsers.length - 1]
-    : formattedUsers[0];
-
-  return `Users here: ${finalMessage}`;
-};
 
 const messages = computed(() => {
   if (!channelsStore.currentMessages || channelsStore.currentMessages.length === 0) {
     return []; // Return an empty array or handle it as needed
   }
   return channelsStore.currentMessages.map(message => {
-    if (message.content.trim() === '/list') {
+    if (message.content.trim().startsWith('/list')) {
       if (message.author.id === user.value?.id) {
-        const formattedMessage = formatListMessage(message.content.trim(), users.value, user.value?.nickname);
+        const formattedMessage = message.content.replace('/list', '').trim();
         return { ...message, content: formattedMessage, messageType: MessageType.system};
       }
       return null;
@@ -96,7 +79,6 @@ const infiniteScroll = ref<QInfiniteScroll | null>(null);
 const showInfiniteScroll = ref(false);
 const items = ref<Message[]>([]);
 
-const users = ref<string[]>([]);
 
 // Fetch users from the database
 // const fetchUsers = async () => {

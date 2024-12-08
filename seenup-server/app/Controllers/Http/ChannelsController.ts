@@ -191,6 +191,16 @@ export default class ChannelsController {
                 await channel.related("users").attach([currentUser.id]);
             }
 
+            console.log("fetching user channels");
+            const user = auth.user!;
+            const channels = await user.related("channels").query();
+            console.log(channels);
+            const userChannels = channels.map(channel => ({
+                name: channel.name,
+                isPrivate: channel.isPrivate
+            }));
+            socket.emit("user:channels", userChannels as Channel[]);
+
             socket.to(`channel_${channel.id}`).emit("user_joined", { channelId: channel.id, userId: currentUser.id });
             return socket.emit("success", `You have joined ${channelName}`);
         } catch (error) {

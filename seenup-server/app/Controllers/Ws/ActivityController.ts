@@ -1,10 +1,7 @@
 import type { WsContextContract } from "@ioc:Ruby184/Socket.IO/WsContext";
 import User from "App/Models/User";
+import Channel from "App/Models/Channel";
 import ChannelsController from '../Ws/ChannelsController';
-type Channel = {
-    name: string;
-    isPrivate: boolean;
-};
 
 export default class ActivityController {
     private getUserRoom(user: User): string {
@@ -44,7 +41,6 @@ export default class ActivityController {
         console.log("fetching user channels");
         const user = auth.user!;
         const channels = await user.related("channels").query();
-        console.log(channels);
         const userChannels = channels.map(channel => ({
             name: channel.name,
             isPrivate: channel.isPrivate
@@ -75,7 +71,6 @@ export default class ActivityController {
         name: string,
         flag: string
     ) {
-        console.log(command);
         logger.info("general command executed", command);
         
         command = command.replace(/\r?\n|\r/g, '').trim();
@@ -91,6 +86,68 @@ export default class ActivityController {
                 } else {
                     return socket.emit('error', 'Please specify a channel name for the /join command.');
                 }
+            case '/cancel':
+                if (name) {
+                    const channel = await Channel.query().where('name', name).first();
+                    if (!channel) {
+                        return socket.emit('error', 'Channel not found.');
+                    }
+
+                    const user = auth.user;
+                    if (!user) {
+                        return socket.emit('error', 'You must be logged in');
+                    }
+
+                    if (channel.adminId !== user.id) {
+                        await channel.related('users').detach([user.id]);
+                        console.log("fetching user channels");
+                        const channels = await user.related("channels").query();
+                        const userChannels = channels.map(channel => ({
+                            name: channel.name,
+                            isPrivate: channel.isPrivate
+                        }));
+                        socket.emit("user:channels", userChannels as Channel[]);
+                        return socket.emit('channel:cancel', { name });
+                    } else {
+                        await channel.delete();
+                        console.log("fetching user channels");
+                        const channels = await user.related("channels").query();
+                        const userChannels = channels.map(channel => ({
+                            name: channel.name,
+                            isPrivate: channel.isPrivate
+                        }));
+                        socket.emit("user:channels", userChannels as Channel[]);
+                        return socket.emit('channel:quit', { name });
+                    }
+                } else {
+                    return socket.emit('error', 'Channel name not found.');
+                }
+            case '/quit':
+                if (name) {
+                    const channel = await Channel.query().where('name', name).first();
+                    if (!channel) {
+                        return socket.emit('error', 'Channel not found.');
+                    }
+
+                    const user = auth.user;
+                    if (!user) {
+                        return socket.emit('error', 'You must be logged in');
+                    }
+
+                    if (channel.adminId == user.id) {
+                        await channel.delete();
+                        console.log("fetching user channels");
+                        const channels = await user.related("channels").query();
+                        const userChannels = channels.map(channel => ({
+                            name: channel.name,
+                            isPrivate: channel.isPrivate
+                        }));
+                        socket.emit("user:channels", userChannels as Channel[]);
+                        return socket.emit('channel:quit', { name });
+                    }
+                } else {
+                    return socket.emit('error', 'Channel name not found.');
+                }
             default:
                 return socket.emit('error', 'Unknown command.');
         }
@@ -104,11 +161,29 @@ export default class ActivityController {
         logger.info("fetching user channels");
         const user = auth.user!;
         const channels = await user.related("channels").query();
-        console.log(channels);
         const userChannels = channels.map(channel => ({
             name: channel.name,
             isPrivate: channel.isPrivate
         }));
         socket.emit("user:channels", userChannels as Channel[]);
+    }
+
+    public async onAdminCheck(
+        { socket, auth, logger }: WsContextContract,
+        channelName: string
+    ) {
+        logger.info("checking if user is admin");
+        const user = auth.user!;
+        if (!user) {
+            return socket.emit('error', 'You must be logged in');
+        }
+
+        const channel = await Channel.query().where('name', channelName).first();
+        if (!channel) {
+            return socket.emit('error', 'Channel not found');
+        }
+
+        const isAdmin = channel.adminId === user.id;
+        socket.emit('user:isAdmin', isAdmin);
     }
 }

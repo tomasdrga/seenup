@@ -19,7 +19,6 @@
           overflow-hidden
           placeholder="Message #social"
           toolbar-bg="grey"
-          :disable="loading"
           :toolbar="showToolbar ? [
           ['bold', 'italic', 'strike'],
           ['link'],
@@ -43,7 +42,7 @@
           <q-btn v-if="!isSmallScreen" round dense flat icon="mood" size="sm" class="q-ma-xs"/>
           <q-btn v-if="!isSmallScreen" @click="toggleUser" round dense flat icon="alternate_email" size="sm" class="q-ma-xs"/>
         </div>
-        <q-btn :disable="loading" @click="send" round dense flat icon="send" size="sm" class="q-ma-xs"/>
+        <q-btn @click="send" round dense flat icon="send" size="sm" class="q-ma-xs"/>
       </div>
     </div>
 
@@ -60,12 +59,11 @@
   import { useQuasar } from 'quasar';
 
   import { commands as allCommands } from 'assets/commands';
-  import {Channel, User} from 'components/models';
+  import {Channel} from 'components/models';
   import CommandSuggestionsBox from 'components/CommandSuggestionBox.vue';
   import UserSuggestionsBox from 'components/UserSuggestionBox.vue';
 
   import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
-  import {api} from 'boot/axios';
 
   const props = defineProps({
     currentChannel: {
@@ -87,63 +85,55 @@
 
   const activeChannel = computed(() => channelsStore.active);
 
-  const users = ref<User[]>([]);
-  const fetchUsers = async () => {
-    try {
-      const response = await api.get('/auth/users', {
-        params: { channel: channelsStore.active }
-      });
-      users.value = response.data;
-    } catch (error) {
-      console.error('Failed to load users:', error);
-    }
-  };
-
-  watch(
-    activeChannel,
-    async (newChannel, oldChannel) => {
-      if (newChannel !== oldChannel) {
-        await fetchUsers();
-      }
-    },
-    { immediate: true }
-  );
 
   // Methods
-  const send = async () => {
-    let messageContent = editor.value.trim();
+ const send = async () => {
+  const messageContent = editor.value.trim();
 
-    if (!activeChannel.value) {
-      if (messageContent.startsWith('/')) {
-        // Handle command
-        messageContent = messageContent.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
-        const [command, name, flag] = messageContent.split(' ');
+  if (!messageContent) {
+    return;
+  }
+  
+  editor.value = ''; // Clear the editor before executing the command or message
+  loading.value = true;
+  if (!activeChannel.value) {
+    if (messageContent.startsWith('/')) {
+      // Handle command
+      const [command, name, flag] = messageContent.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim().split(' ');
+      try {
         await channelsStore.executeGeneralCommand(command, name, flag);
-        editor.value = ''; // Clear the editor
-      } else {
-        // Handle regular message
-        console.log('No active channel. You can only send commands');
-        editor.value = ''; // Clear the editor
-        return;
+        loading.value = false;
+      } catch (error) {
+        console.error('Error executing command:', error);
       }
-    };
+    } else {
+      // Handle regular message
+      console.log('No active channel. You can only send commands');
+      return;
+    }
+  }
 
-    loading.value = true;
-    if (activeChannel.value) {
-       if (messageContent.startsWith('/')) {
-        // Handle command
-        messageContent = messageContent.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim();
-        const [command, name, flag] = messageContent.split(' ');
+  if (activeChannel.value) {
+    if (messageContent.startsWith('/')) {
+      // Handle command
+      const [command, name, flag] = messageContent.replace(/<br>/g, '').replace(/\r?\n|\r/g, '').trim().split(' ');
+      try {
         await channelsStore.executeCommand(activeChannel.value, command, name, flag);
-        editor.value = ''; // Clear the editor
-      } else {
-        // Handle regular message
+        loading.value = false;
+      } catch (error) {
+        console.error('Error executing command:', error);
+      }
+    } else {
+      // Handle regular message
+      try {
         await channelsStore.addMessage(activeChannel.value, messageContent);
-        editor.value = ''; // Clear the editor
+        loading.value = false;
+      } catch (error) {
+        console.error('Error adding message:', error);
       }
     }
-    loading.value = false;
-  };
+  }
+};
 
   const isSmallScreen = computed(() => $q.screen.lt.sm);
   const commands = computed(() => allCommands.filter(cmd => cmd.type === props.currentChannel.type));

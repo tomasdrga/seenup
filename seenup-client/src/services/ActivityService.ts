@@ -1,9 +1,16 @@
+import { ref } from 'vue';
 import { User, Channel } from 'src/contracts';
 import { authManager } from '.';
 import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 import { SocketManager } from './SocketManager';
 
 class ActivitySocketManager extends SocketManager {
+    private _isAdmin = ref(false);
+
+    public get isAdmin() {
+        return this._isAdmin.value;
+    }
+
     public subscribe(): void {
         this.socket.on('user:list', (onlineUsers: User[]) => {
             console.log('Online users list', onlineUsers);
@@ -15,6 +22,19 @@ class ActivitySocketManager extends SocketManager {
 
         this.socket.on('user:offline', (user: User) => {
             console.log('User is offline', user);
+        });
+
+        this.socket.on('user:isAdmin', (isAdmin: boolean) => {
+            console.log('User is admin:', isAdmin);
+            this._isAdmin.value = isAdmin;
+        });
+
+        this.socket.on('channel:quit', (channel: string ) => {
+            console.log('Received channel:deleted event:', channel);
+        });
+
+        this.socket.on('channel:cancel', (channel: string) => {
+            console.log('Received channel:leave event:', channel);
         });
 
         this.socket.on('join_channel', (channel) => {
@@ -53,6 +73,11 @@ class ActivitySocketManager extends SocketManager {
 
     public getUserChannels(): Promise<void> {
         return this.emitAsync('fetchUserChannels');
+    }
+
+    public checkAdmin(channel: string): Promise<void> {
+        console.log('Checking if user is admin in channel:', channel);
+        return this.emitAsync('onAdminCheck', channel);
     }
 }
 export default new ActivitySocketManager('/');

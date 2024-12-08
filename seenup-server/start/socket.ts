@@ -13,10 +13,12 @@ Ws.namespace("/")
     .connected("ActivityController.onConnected")
     .on("executeGeneralCommand", "ActivityController.onExecuteGeneralCommand")
     .on("fetchUserChannels", "ActivityController.fetchUserChannels")
+    .on("onAdminCheck", "ActivityController.onAdminCheck")
     .disconnected("ActivityController.onDisconnected");
 
 // this is dynamic namespace, in controller methods we can use params.name
 Ws.namespace("channels/:name")
     // .middleware('channel') // check if user can join given channel
     .on("loadMessages", "MessageController.loadMessages")
+    .on("executeCommand", "ChannelsController.onExecuteCommand")
     .on("addMessage", "MessageController.addMessage");

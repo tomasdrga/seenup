@@ -35,8 +35,7 @@
     "eslint-plugin-vue": "^9.0.0",
     "prettier": "^2.5.1",
     "typescript": "^4.9.5",
-    "vue-tsc": "^2.0.29",
-    "workbox-webpack-plugin": "^7.3.0"
+    "vue-tsc": "^2.0.29"
   },
   "overridesComments": {
     "typescript-1": "npm and pnpm hoist newer version of TypeScript, which is incompatible with app-webpack v3 due to fork-ts-checker-webpack-plugin",

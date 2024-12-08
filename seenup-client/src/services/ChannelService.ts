@@ -1,6 +1,6 @@
 // src/services/ChannelService.ts
 
-import { RawMessage, SerializedMessage } from 'src/contracts';
+import { RawMessage, SerializedMessage, Channel } from 'src/contracts';
 import { SocketManager } from './SocketManager';
 import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 
@@ -14,8 +14,33 @@ class ChannelSocketManager extends SocketManager {
             channelsStore.NEW_MESSAGE(channel, message);
         });
 
-        this.socket.on('channel:deleted', (data: { channelId: string }) => {
-            console.log('Received channel:deleted event:', data)
+        this.socket.on('message:list', (message: SerializedMessage) => {
+            channelsStore.NEW_MESSAGE(channel, message);
+        });
+
+        this.socket.on('user:channels', (channels: Channel[]) => {
+            console.log('User channels:', channels);
+            const channelsStore = useChannelsStore();
+            channelsStore.updateUserChannels(channels);
+        });
+
+        this.socket.on('join_channel', (channel) => {
+            const { channelId, channelName, channelType, userId } = channel;
+            console.log('Joined channel:', channelName, channelType, userId);
+            console.log('Channel ID:', channelId);
+            const channelsStore = useChannelsStore();
+            channelsStore.join(channelName, channelType);
+            channelsStore.SET_ACTIVE(channelName, channelType);
+        });
+
+        this.socket.on('channel:quit', (data: { channelName: string }) => {
+            console.log('Received channel:deleted event:', channel);
+            channelsStore.leave(data.channelName);
+        });
+
+        this.socket.on('channel:cancel', (data: { channelName: string }) => {
+            console.log('Received channel:leave event:', channel);
+            channelsStore.leave(data.channelName);
         });
 
         this.socket.on('channel:leave', (data: { channelName: string }) => {

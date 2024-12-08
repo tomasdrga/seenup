@@ -38,6 +38,7 @@
       <div class="col-0 col-md-2 full-height gt-sm" id="left-side-bar">
         <p :class="$q.screen.lt.lg ? 'text-smaller q-pa-md text-weight-bold text-primary text-uppercase' : 'text-h6 q-pa-md text-weight-bold text-primary text-uppercase'">{{ currentServer.name }}</p>
         <div class="text-primary text-body">
+              <q-scroll-area style="height: calc(100vh - 70px); max-width: 100vw" :visible="false">
           <q-list class="rounded-borders text-weight-bold">
             <q-expansion-item default-opened label="Channels" style="width: 100%;" class="text-uppercase">
 
@@ -61,6 +62,7 @@
               </q-btn>
             </q-expansion-item>
           </q-list>
+          </q-scroll-area>
         </div>
       </div>
 
@@ -235,7 +237,7 @@ import CommandLineComponent from 'components/CommandLineComponent.vue';
 import ChannelComponent from 'src/components/ChannelComponent.vue';
 import { useServerStore } from '../stores/serverStore';
 import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
-import { api } from 'src/boot/axios';
+import activityService from 'src/services/ActivityService';
 
 // Define the interface for the component instance
 interface ChannelComponentInstance extends ComponentPublicInstance {
@@ -332,11 +334,15 @@ export default defineComponent({
 
     const leaveChannel = async (channel: { name: string, isPrivate: boolean }) => {
       try {
+
         // Check if the user is an admin
-        const isAdmin = await api.get(`/channels/${channel.name}/is-admin`);
-        if (isAdmin.data) {
-          // Admin leaves and deletes the channel
-          await api.delete(`/channels/${channel.name}`);
+        await channelsStore.checkAdmin(channel.name);
+        const isAdmin = activityService.isAdmin;
+        const typeChannel = ref(channel.isPrivate ? 'private' : 'public');
+
+        if (isAdmin) {
+          await channelsStore.executeGeneralCommand('/quit', channel.name, typeChannel.value);
+
           $q.notify({
             color: 'grey',
             textColor: 'primary',
@@ -346,7 +352,8 @@ export default defineComponent({
           });
         } else {
           // User leaves the channel
-          await api.post(`/channels/${channel.name}/leave`);
+          await channelsStore.executeGeneralCommand('/cancel', channel.name, typeChannel.value);
+
           $q.notify({
             color: 'grey',
             textColor: 'primary',
