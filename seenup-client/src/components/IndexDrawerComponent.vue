@@ -48,14 +48,14 @@
       </q-btn>
       <q-btn flat class="q-pa-none">
         <q-avatar rounded size="lg">
-          <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
+          <img :src="profilePicturePath" alt="Profile Pic" />
         </q-avatar>
         <q-menu anchor="bottom right" self="bottom left" :offset="[10, 0]" class="q-pt-md text-primary">
           <q-list>
             <q-item clickable v-close-popup>
               <q-item-section class="col-3">
                 <q-avatar rounded size="lg">
-                  <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
+                  <img :src="profilePicturePath" alt="Profile Pic" />
                 </q-avatar>
               </q-item-section>
               <q-item-section>
@@ -142,6 +142,11 @@ export default defineComponent({
       }
     });
 
+    const profilePicturePath = computed(() => {
+      const basePath = '/avatars/';
+      return user.value?.profile_picture ? `${basePath}${user.value?.profile_picture}` : 'seenup-client/public/nowty_face.png';
+    });
+
     const updateLeftDrawerOpen = (value: boolean) => {
       emit('update:leftDrawerOpen', value);
     };
@@ -164,6 +169,7 @@ export default defineComponent({
       userStatus,
       updateLeftDrawerOpen,
       changeStatus,
+      profilePicturePath,
       logout
     };
   },
