@@ -15,8 +15,9 @@ export interface ChannelsStateInterface {
     messages: { [channel: string]: SerializedMessage[] };
     active: string | null;
     activeType: string | null;
-    channels: Channel[]; // Add channels array
+    channels: Channel[];
     userChannels: Channel[];
+    notifications: SerializedMessage[];
 }
 
 const ACTIVE_CHANNEL_KEY = 'activeChannel';
@@ -31,6 +32,7 @@ export const useChannelsStore = defineStore('channels', {
         activeType: localStorage.getItem(ACTIVE_CHANNEL_TYPE_KEY),
         channels: [],
         userChannels: [],
+        notifications: [],
     }),
 
     getters: {
@@ -55,7 +57,10 @@ export const useChannelsStore = defineStore('channels', {
                 name: activeChannelName,
                 type: activeChannelType
             };
-        }
+        },
+        allNotifications(state): SerializedMessage[] {
+          return state.notifications;
+        },
     },
 
     actions: {
@@ -89,9 +94,20 @@ export const useChannelsStore = defineStore('channels', {
             if (!this.messages[channel]) {
                 this.messages[channel] = [];
             }
-        this.messages[channel].push(message);
+            this.messages[channel].push(message);
+          if (this.active !== channel) {
+            this.ADD_NOTIFICATION(message);
+          }
         },
-        async join(channel: string, isPrivate: boolean) {
+        ADD_NOTIFICATION(message: SerializedMessage) {
+          this.notifications.push(message);
+        },
+        CLEAR_NOTIFICATIONS() {
+          this.notifications = [];
+        },
+
+
+      async join(channel: string, isPrivate: boolean) {
             console.log(`channelsStore.join called with channel: ${channel}`);
             console.log(`channelsStore.join called with isPrivate: ${isPrivate}`);
             try {

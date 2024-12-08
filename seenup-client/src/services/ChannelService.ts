@@ -12,6 +12,7 @@ class ChannelSocketManager extends SocketManager {
 
         this.socket.on('message', (message: SerializedMessage) => {
             channelsStore.NEW_MESSAGE(channel, message);
+            channelsStore.ADD_NOTIFICATION(message);
         });
 
         this.socket.on('message:list', (message: SerializedMessage) => {

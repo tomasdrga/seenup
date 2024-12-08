@@ -112,10 +112,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed } from 'vue';
+import { defineComponent, computed} from 'vue';
 import { api } from 'boot/axios';
 
 import { useAuthStore } from 'stores/module-auth';
+
 
 export default defineComponent({
   props: {
@@ -128,7 +129,6 @@ export default defineComponent({
   setup(props, { emit }) {
     const authStore = useAuthStore();
     const user = computed(() => authStore.user);
-
     const userStatus = computed(() => {
       switch (user.value?.status) {
         case 'active':

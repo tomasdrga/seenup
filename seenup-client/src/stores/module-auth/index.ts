@@ -52,7 +52,7 @@ export const useAuthStore = defineStore('auth', {
                     channelsStore.join(activeChannel.name, channelType);
                     channelsStore.SET_ACTIVE(activeChannel.name, channelType);
                 }
-            
+
                 this.status = 'success';
                 return user !== null;
             } catch (err) {

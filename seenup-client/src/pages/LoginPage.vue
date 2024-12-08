@@ -51,6 +51,7 @@
 import { defineComponent, computed, ref, reactive } from 'vue'
 import { useAuthStore } from '../stores/module-auth';
 import { RouteLocationRaw, useRoute, useRouter } from 'vue-router';
+import {useQuasar} from "quasar";
 
 export default defineComponent({
     name: 'LoginPage',
@@ -59,6 +60,7 @@ export default defineComponent({
         const route = useRoute();
         const router = useRouter();
         const authStore = useAuthStore();
+        const $q = useQuasar();
 
         const redirectTo = computed((): RouteLocationRaw => {
             const redirect = route.query.redirect as string;
@@ -80,6 +82,15 @@ export default defineComponent({
                 router.replace(redirectTo.value); // Redirect on success
             } catch (error) {
                 console.error('Login failed:', error);
+                $q.notify({
+                  progress: true,
+                  color: 'grey',
+                  textColor: 'primary',
+                  icon: 'warning',
+                  message: 'Login failed. Please check your credentials and try again',
+                  position: 'top',
+                  actions: [{ icon: 'close', color: 'primary', round: true }],
+                });
             }
         };
 

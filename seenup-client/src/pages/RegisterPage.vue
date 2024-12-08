@@ -82,14 +82,14 @@
             name="password_confirmation"
             v-model="passwordConfirmation"
             label="Confirm Password"
-            :type="showPassword ? 'text' : 'password'"
+            :type="showConfirmPassword  ? 'text' : 'password'"
             bottom-slots
           >
             <template v-slot:append>
               <q-icon
-                :name="showPassword ? 'visibility' : 'visibility_off'"
+                :name="showConfirmPassword ? 'visibility' : 'visibility_off'"
                 class="cursor-pointer"
-                @click="showPassword = !showPassword"
+                @click="showConfirmPassword = !showConfirmPassword"
               />
             </template>
           </q-input>
@@ -146,10 +146,12 @@ export default defineComponent({
     });
 
     const showPassword = ref(false);
+    const showConfirmPassword = ref(false);
 
     // Computed properties
     const redirectTo = computed<RouteLocationRaw>(() => ({ name: 'login' }));
     const loading = computed<boolean>(() => authStore.status === 'pending');
+    const images = ['matko.jpg', 'pajko.jpg', 'tomko.JPG'];
 
     // Form submission handler
     const onSubmit = async () => {
@@ -172,6 +174,7 @@ export default defineComponent({
             last_name: form.last_name,
             password: form.password,
             passwordConfirmation: form.passwordConfirmation,
+            profile_picture: images[Math.floor(Math.random() * images.length)],
           });
           router.push(redirectTo.value);
           $q.notify({
@@ -207,6 +210,7 @@ export default defineComponent({
       form.passwordConfirmation = '';
       form.accept = false;
       showPassword.value = false;
+      showConfirmPassword.value = false;
     };
 
     // Navigate to the login page
@@ -217,6 +221,7 @@ export default defineComponent({
     return {
       ...toRefs(form), // Spread the reactive references
       showPassword,
+      showConfirmPassword,
       redirectTo,
       loading,
       onSubmit,

@@ -47,6 +47,19 @@ let user = computed(() => authStore.user);
 
 const channelsStore = useChannelsStore();
 
+const formatListMessage = (messageContent: string, usersList: string[], currentUserNickname: string) => {
+  const otherUsers = usersList.filter(username => username !== currentUserNickname);
+
+  const formattedUsers = otherUsers.map(username => `@${username}`);
+
+  formattedUsers.push('You');
+
+  const finalMessage = formattedUsers.length > 1
+    ? formattedUsers.slice(0, -1).join(', ') + ' and ' + formattedUsers[formattedUsers.length - 1]
+    : formattedUsers[0];
+
+  return `Users here: ${finalMessage}`;
+};
 
 const messages = computed(() => {
   if (!channelsStore.currentMessages || channelsStore.currentMessages.length === 0) {
@@ -119,6 +132,7 @@ const $q = useQuasar();
 
 const sendNotification = (message: string) => {
   if (Notification.permission === 'granted' && !$q.appVisible) {
+    console.log('Posielmaeee')
     const notification = new Notification('New message', {
       body: message,
       icon: require('../../public/nowty_face.png')
@@ -157,32 +171,76 @@ function checkMention (message: string) {
   }
   return false;
 }
-
-watch(() => channelsStore.currentMessages, async () => {
+watch(() => channelsStore.notifications, async () => {
   await nextTick();
-  if (permissionGranted.value && !$q.appVisible) {
-    const latestMessage = channelsStore.currentMessages[channelsStore.currentMessages.length - 1];
-    const sender = latestMessage.author.nickname;
-    if (latestMessage.content.startsWith('/')
-      || !latestMessage
-      || userNotificationSetting.value === 'Off'
-      || user.value?.status === 'dnd'
-      || user.value?.status === 'offline'
+  if (!permissionGranted.value || $q.appVisible) return;
+
+  for (const notification of channelsStore.notifications) {
+    if (
+      notification.content.startsWith('/') ||
+      userNotificationSetting.value === 'Off' ||
+      user.value?.status === 'dnd' ||
+      user.value?.status === 'offline'
     ) return;
-    const cleanMessage = latestMessage.content.replace(/<[^>]*>/g, '').trim();
+    const cleanMessage = notification.content.replace(/<[^>]*>/g, '').trim();
     const processedMessage = cleanMessage.length > 25
-      ? cleanMessage.substring(0, 25) + '...'
+      ? `${cleanMessage.substring(0, 25)}...`
       : cleanMessage;
-    if (userNotificationSetting.value ==='Only mentions') {
-      if (checkMention(latestMessage.content)) {
-        sendNotification(`${sender}: ${processedMessage}`);
+
+    if (userNotificationSetting.value === 'Only mentions') {
+      if (checkMention(cleanMessage)) {
+        sendNotification(`${notification.author}: ${processedMessage}`);
       }
-      return;
+      continue;
     }
-    sendNotification(`${sender}: ${processedMessage}`);
+    sendNotification(`${notification.author.nickname}: ${notification.content}`);
+    channelsStore.CLEAR_NOTIFICATIONS();
   }
+
+}, { deep: true });
+
+// watch(() => channelsStore.messages, async () => {
+//   await nextTick();
+//
+//   if (!permissionGranted.value || $q.appVisible) return;
+//
+//   // Iterate over all channels' messages
+//   for (const [channel, messages] of Object.entries(channelsStore.messages)) {
+//     if (!messages.length) continue;
+//
+//     const latestMessage = messages[messages.length - 1];
+//     const sender = latestMessage.author.nickname;
+//
+//     // Skip messages based on various conditions
+//     if (
+//       latestMessage.content.startsWith('/') ||
+//       !latestMessage ||
+//       userNotificationSetting.value === 'Off' ||
+//       user.value?.status === 'dnd' ||
+//       user.value?.status === 'offline'
+//     ) continue;
+//
+//     const cleanMessage = latestMessage.content.replace(/<[^>]*>/g, '').trim();
+//     const processedMessage = cleanMessage.length > 25
+//       ? `${cleanMessage.substring(0, 25)}...`
+//       : cleanMessage;
+//
+//     if (userNotificationSetting.value === 'Only mentions') {
+//       if (checkMention(latestMessage.content)) {
+//         sendNotification(`${sender} in ${channel}: ${processedMessage}`);
+//       }
+//       continue;
+//     }
+//
+//     sendNotification(`${sender} in ${channel}: ${processedMessage}`);
+//   }
+// }, { deep: true });
+
+watch(()=> channelsStore.currentMessages, async () => {
+  await nextTick();
   scrollToBottom();
 }, { deep: true });
+
 
 // Reset messages, used when switching between channels multiple times
 const resetMessages = () => {
