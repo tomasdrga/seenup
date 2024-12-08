@@ -89,7 +89,7 @@ export const useChannelsStore = defineStore('channels', {
             if (!this.messages[channel]) {
                 this.messages[channel] = [];
             }
-            this.messages[channel].push(message);
+        this.messages[channel].push(message);
         },
         async join(channel: string, isPrivate: boolean) {
             console.log(`channelsStore.join called with channel: ${channel}`);
@@ -111,7 +111,7 @@ export const useChannelsStore = defineStore('channels', {
 
             leaving.forEach((c) => {
                 channelService.leave(c);
-                //this.CLEAR_CHANNEL(c);
+                this.CLEAR_CHANNEL(c);
                 this.channels = this.channels.filter(ch => ch.name !== c);
             });
         },
@@ -166,6 +166,14 @@ export const useChannelsStore = defineStore('channels', {
                 this.LOADING_ERROR(err as Error);
                 throw err;
             }
-        }
+        },
+        async checkAdmin(channel: string) {
+        const service = activityService;
+            if (service) {
+                return service.checkAdmin(channel);
+            } else {
+                throw new Error(`Not connected to channel: ${channel}`);
+            }
+        },
     },
 });

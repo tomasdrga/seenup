@@ -90,9 +90,7 @@ export default defineComponent({
             position: 'top'
           });
 
-
-          // Automatically join the user to the channel and update the store
-          await channelsStore.join(response.data.name, isPrivate);
+          await channelsStore.executeGeneralCommand('/join', response.data.name, typeChannel.value.toLowerCase());
         } catch (error) {
           $q.notify({
             color: 'red',
