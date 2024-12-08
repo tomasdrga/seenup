@@ -41,7 +41,8 @@ export default class RegisterUserValidator {
     nickname: schema.string({}, [
       rules.minLength(3),
       rules.unique({ table: 'users', column: 'nickname' })
-    ])
+    ]),
+    profile_picture: schema.string.optional()
   })
 
   /**

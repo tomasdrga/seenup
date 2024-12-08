@@ -48,14 +48,14 @@
       </q-btn>
       <q-btn flat class="q-pa-none">
         <q-avatar rounded size="lg">
-          <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
+          <img :src="profilePicturePath" alt="Profile Pic" />
         </q-avatar>
         <q-menu anchor="bottom right" self="bottom left" :offset="[10, 0]" class="q-pt-md text-primary">
           <q-list>
             <q-item clickable v-close-popup>
               <q-item-section class="col-3">
                 <q-avatar rounded size="lg">
-                  <img :src="'/avatars/matko.jpg'" alt="Profile Pic" />
+                  <img :src="profilePicturePath" alt="Profile Pic" />
                 </q-avatar>
               </q-item-section>
               <q-item-section>
@@ -112,10 +112,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed } from 'vue';
+import { defineComponent, computed} from 'vue';
 import { api } from 'boot/axios';
 
 import { useAuthStore } from 'stores/module-auth';
+
 
 export default defineComponent({
   props: {
@@ -128,7 +129,6 @@ export default defineComponent({
   setup(props, { emit }) {
     const authStore = useAuthStore();
     const user = computed(() => authStore.user);
-
     const userStatus = computed(() => {
       switch (user.value?.status) {
         case 'active':
@@ -140,6 +140,11 @@ export default defineComponent({
         default:
           return { icon: 'mdi-account-question', color: 'grey' };
       }
+    });
+
+    const profilePicturePath = computed(() => {
+      const basePath = '/avatars/';
+      return user.value?.profile_picture ? `${basePath}${user.value?.profile_picture}` : 'seenup-client/public/nowty_face.png';
     });
 
     const updateLeftDrawerOpen = (value: boolean) => {
@@ -164,6 +169,7 @@ export default defineComponent({
       userStatus,
       updateLeftDrawerOpen,
       changeStatus,
+      profilePicturePath,
       logout
     };
   },
