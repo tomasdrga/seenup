@@ -11,17 +11,34 @@ class ActivitySocketManager extends SocketManager {
         return this._isAdmin.value;
     }
 
+    public getUserStatus(userId: number): 'active' | 'dnd' | 'offline' {
+        const channelsStore = useChannelsStore();
+        return channelsStore.getUserStatus(userId);
+    }
+
     public subscribe(): void {
         this.socket.on('user:list', (onlineUsers: User[]) => {
             console.log('Online users list', onlineUsers);
+            const channelsStore = useChannelsStore();
+            channelsStore.updateUserStatuses(onlineUsers);
         });
 
         this.socket.on('user:online', (user: User) => {
             console.log('User is online', user);
+            const channelsStore = useChannelsStore();
+            channelsStore.updateUserStatus(user, 'active');
+        });
+
+        this.socket.on('user:dnd', (user: User) => {
+            console.log('User is dnd', user);
+            const channelsStore = useChannelsStore();
+            channelsStore.updateUserStatus(user, 'dnd');
         });
 
         this.socket.on('user:offline', (user: User) => {
             console.log('User is offline', user);
+            const channelsStore = useChannelsStore();
+            channelsStore.updateUserStatus(user, 'offline');
         });
 
         this.socket.on('user:isAdmin', (isAdmin: boolean) => {
@@ -29,12 +46,16 @@ class ActivitySocketManager extends SocketManager {
             this._isAdmin.value = isAdmin;
         });
 
-        this.socket.on('channel:quit', (channel: string ) => {
-            console.log('Received channel:deleted event:', channel);
+        this.socket.on('channel:quit', (channelName: string ) => {
+            console.log('Received channel:deleted event:', channelName);
+            const channelsStore = useChannelsStore();
+            channelsStore.leave(channelName);
         });
 
-        this.socket.on('channel:cancel', (channel: string) => {
-            console.log('Received channel:leave event:', channel);
+        this.socket.on('channel:cancel', (channelName: string ) => {
+            console.log('Received channel:leave event:', channelName);
+            const channelsStore = useChannelsStore();
+            channelsStore.leave(channelName);
         });
 
         this.socket.on('join_channel', (channel) => {
@@ -46,10 +67,10 @@ class ActivitySocketManager extends SocketManager {
             channelsStore.SET_ACTIVE(channelName, channelType);
         });
 
-        this.socket.on('user:channels', (channels: Channel[]) => {
+        this.socket.on('user:channels', (channels: Channel[], channelName?: string) => {
             console.log('User channels:', channels);
             const channelsStore = useChannelsStore();
-            channelsStore.updateUserChannels(channels);
+            channelsStore.updateUserChannels(channels, channelName);
         });
         
         this.socket.on('error', (error: string) => {
@@ -78,6 +99,11 @@ class ActivitySocketManager extends SocketManager {
     public checkAdmin(channel: string): Promise<void> {
         console.log('Checking if user is admin in channel:', channel);
         return this.emitAsync('onAdminCheck', channel);
+    }
+
+    public changeStatus(status: 'active' | 'dnd' | 'offline'): Promise<void> {
+        console.log('Changing status to:', status);
+        return this.emitAsync('changeStatus', status);
     }
 }
 export default new ActivitySocketManager('/');

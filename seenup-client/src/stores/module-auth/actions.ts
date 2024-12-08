@@ -14,6 +14,7 @@ export const authActions = {
             console.log('Calling authService.me()');
             const user = await authService.me();
             console.log('User retrieved:', user);
+            
             if (user?.id !== this.user?.id) {
                 try {
                     const channelsStore = useChannelsStore();

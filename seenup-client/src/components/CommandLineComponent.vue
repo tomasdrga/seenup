@@ -47,9 +47,34 @@
     </div>
 
     <!-- Typing Notification -->
-    <div class="q-pl-xs" >
-      <span class="typing-text text-deep-purple-4"  @click="showTyping"><strong>Spicy Pája</strong> is typing</span>
+    <div class="q-pl-xs">
+      <div v-for="([key, value], index) in Object.entries(typingStatus)" :key="index" @click="showTyping">
+        <span class="typing-text text-deep-purple-4" v-if="value">
+          <strong>{{ key }}</strong> is typing...
+        </span>
+      </div>
     </div>
+
+
+
+    <!-- Draft Messages Dialog -->
+    <q-dialog v-model="isDialogVisible" position="bottom" class="text-primary">
+      <q-card>
+        <div v-for="(draft, user) in draftMessages" :key="user">
+          {{  typingStatus.user }}
+          <q-card-section>
+            <div class="text-h6"><strong>{{ user }}</strong> is typing a message...</div>
+          </q-card-section>
+
+          <q-card-section>
+              {{ draft }}
+          </q-card-section>
+        </div>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -57,11 +82,13 @@
   import {computed, ref, watch, nextTick} from 'vue';
 
   import { useQuasar } from 'quasar';
+  import { watchEffect } from 'vue';
 
   import { commands as allCommands } from 'assets/commands';
   import {Channel} from 'components/models';
   import CommandSuggestionsBox from 'components/CommandSuggestionBox.vue';
   import UserSuggestionsBox from 'components/UserSuggestionBox.vue';
+  import ChannelService from 'src/services/ChannelService';
 
   import { useChannelsStore } from 'src/stores/module-channels/useChannelsStore';
 
@@ -85,6 +112,17 @@
 
   const activeChannel = computed(() => channelsStore.active);
 
+  const users = computed(() => {
+    const channel = channelsStore.channels.find(channel => channel.name === activeChannel.value);
+    return channel && channel.users ? channel.users.map(user => ({ nickname: typeof user === 'string' ? user : user || 'Unknown' })) : [];
+  });
+
+
+  const isDialogVisible = ref(false);
+
+  const showTyping = () => {
+    isDialogVisible.value = true;
+  };
 
   // Methods
  const send = async () => {
@@ -181,33 +219,40 @@
     showToolbar.value = !showToolbar.value;
   };
 
-  // Show typing notification
-  const showTyping = () => {
-    const baseMessage = 'Kamarádi';
-    const extraChars = ' mi říkají Pavel, můžeš mi říkat Spicy Pája';
-    const user = props.currentChannel?.users[2];
-    let charIndex = 0;
+  const typingStatus = computed<Record<string, boolean>>(() => {
+    return activeChannel.value
+      ? channelsStore.typingStatus[activeChannel.value] || {}
+      : {};
+  });
 
-    const dialog = $q.dialog({
-      title: `<div class="text-primary">${user?.nickname}</div>`,
-      message: baseMessage,
-      position: 'bottom',
-      persistent: false,
-      html: true,
-      ok: false,
-    });
+  watchEffect(() => {
+    console.log("Typing Status Updated:", typingStatus.value);
+  });
 
-    // Simulate typing effect
-    setInterval(() => {
-      charIndex++;
-      const newMessage = `${baseMessage}${extraChars.substring(0, charIndex) || ''}`;
-
-      dialog.update({
-        message: `<div class="text-primary">${newMessage}</div>`,
-        html: true
-      });
-    }, 200);
+  const draftMessages = computed(() => activeChannel.value ? channelsStore.draftMessages[activeChannel.value] || {} : {});
+    
+  const sendTypingEvent = () => {
+    if (activeChannel.value) {
+      const channelManager = ChannelService.in(activeChannel.value);
+      if (channelManager) {
+        channelManager.sendTypingEvent(activeChannel.value);
+      }
+    }
   };
+
+  const sendDraftUpdateEvent = () => {
+    if (activeChannel.value) {
+      const channelManager = ChannelService.in(activeChannel.value);
+      if (channelManager) {
+        channelManager.sendDraftUpdateEvent(activeChannel.value, editor.value);
+      }
+    }
+  };
+
+  watch(editor, () => {
+    sendTypingEvent();
+    sendDraftUpdateEvent();
+  });
 </script>
 
 <style scoped>
