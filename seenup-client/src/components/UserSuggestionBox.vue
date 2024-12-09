@@ -5,10 +5,7 @@
       <q-item v-for="(user, index) in props.users" :key="user.nickname" clickable v-ripple @click="selectUser(user.nickname)"
               :class="index === props.users.length - 1 ? '' : 'user-item'">
         <div class="content-center">
-          <q-avatar size="sm" rounded color="purple" text-color="white">
-            <img :src="'/avatars/matko.jpg'" alt="Avatar" />
 
-          </q-avatar>
         </div>
         <q-item-section class="q-ml-sm">{{ user.nickname }}</q-item-section>
       </q-item>
@@ -18,7 +15,6 @@
 
 <script setup lang="ts">
   import { User } from 'components/models';
-
   const props = defineProps({
     showUsers: {
       type: Boolean,

@@ -86,8 +86,7 @@ const messages = computed(() => {
   const status = user.value ? getUserStatus(user.value.id) : 'offline';
   if (status === 'offline') {
     console.log('User is offline, retaining last known messages.');
-    console.log('user status', status);
-    return lastKnownMessages.value; // Return the last known messages
+    return lastKnownMessages.value;
   }
 
   if (!channelsStore.currentMessages || channelsStore.currentMessages.length === 0) {
@@ -97,15 +96,17 @@ const messages = computed(() => {
   const updatedMessages = channelsStore.currentMessages.map(message => {
     // Handle /list command
     if (message.content.trim().startsWith('/list')) {
-      const contentWithoutCommand = message.content.replace('/list', '').trim(); // Remove /list command
+      const contentWithoutCommand = message.content.replace('/list', '').trim();
       const formattedContent = `${contentWithoutCommand}`;
-      return {
-        ...message,
-        content: formattedContent,
-        messageType: MessageType.system
-      };
+      if (message.author.id === user.value?.id) {
+        return {
+          ...message,
+          content: formattedContent,
+          messageType: MessageType.system
+        };
+      }
+      return null;
     }
-
     return { ...message, messageType: MessageType.user };
   }).filter(message => message !== null);
 
@@ -115,13 +116,13 @@ const messages = computed(() => {
 });
 
 // Handling the load event in an infinite scroll
-// const onLoad = (index: number, done: () => void) => {
-//   setTimeout(() => {
-//     //ChannelService.loadMessages(channelsStore.active!, '5');
-//     console.log('loadujeme')
-//     done();
-//   }, 10000);
-// };
+const onLoad = (index: number, done: () => void) => {
+  setTimeout(() => {
+    //ChannelService.loadMessages(channelsStore.active!, '5');
+    console.log('loadujeme')
+    done();
+  }, 10000);
+};
 
 
 const props = defineProps({
@@ -209,7 +210,8 @@ watch(() => channelsStore.notifications, async () => {
 
     if (userNotificationSetting.value === 'Only mentions') {
       if (checkMention(cleanMessage)) {
-        sendNotification(`${notification.author}: ${processedMessage}`);
+        console.log('notification', notification);
+        sendNotification(`${notification.author.nickname}: ${processedMessage}`);
       }
       continue;
     }

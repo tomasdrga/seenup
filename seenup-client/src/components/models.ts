@@ -30,7 +30,8 @@ export interface User {
   id: number,
   nickname: string,
   profilePic: string,
-  status: string
+  status: string,
+  profile_picture?: string
 }
 
 export interface Command {
