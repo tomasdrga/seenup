@@ -1,12 +1,11 @@
 <template>
   <div v-if="channelsStore.active">
-    <div v-if="showInfiniteScroll">
       <q-infinite-scroll ref="infiniteScroll" @load="onLoad" reverse>
-        <template v-slot:loading>
+       <!--  <template v-slot:loading>
           <div class="row justify-center q-my-md">
             <q-spinner color="deep-purple-4" name="dots" size="40px" />
           </div>
-        </template>
+        </template> -->
 
         <!--  Generate the chat messages -->
 
@@ -28,7 +27,6 @@
         </span>
         </template>
       </q-infinite-scroll>
-    </div>
   </div>
   <div v-else>
     <div class="row justify-center items-center q-ma-md">
@@ -82,7 +80,11 @@ const getUserStatus = (userId: number) => {
 };
 
 const messages = computed(() => {
-  if (user.value?.status === 'offline') {
+  if (!user.value) {
+    return [];
+  }
+  const status = user.value ? getUserStatus(user.value.id) : 'offline';
+  if (status === 'offline') {
     console.log('User is offline, retaining last known messages.');
     return lastKnownMessages.value;
   }
@@ -193,12 +195,13 @@ watch(() => channelsStore.notifications, async () => {
   await nextTick();
   if (!permissionGranted.value || $q.appVisible) return;
   console.log('Checking notifications', channelsStore.notifications);
+  const status = user.value ? getUserStatus(user.value.id) : 'offline';
   for (const notification of channelsStore.notifications) {
     if (
       notification.content.startsWith('/') ||
       userNotificationSetting.value === 'Off' ||
-      user.value?.status === 'dnd' ||
-      user.value?.status === 'offline'
+      status === 'dnd' ||
+      status === 'offline'
     ) return;
     const cleanMessage = notification.content.replace(/<[^>]*>/g, '').trim();
     const processedMessage = cleanMessage.length > 25

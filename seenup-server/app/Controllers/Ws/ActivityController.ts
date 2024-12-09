@@ -15,7 +15,7 @@ export default class ActivityController {
 
         // this is first connection for given user
         if (userSockets.size === 0) {
-            socket.broadcast.emit("user:online", auth.user);
+            //socket.broadcast.emit("user:online", auth.user);
         }
 
         // add this socket to user room
@@ -33,8 +33,9 @@ export default class ActivityController {
 
         const onlineUsers = await User.findMany([...onlineIds]);
 
-        socket.emit("user:list", onlineUsers);
-
+        //socket.emit("user:list", onlineUsers);
+        const activeOrDndUsers = onlineUsers.filter(user => user.status === 'active' || user.status === 'dnd');
+        socket.emit("user:list", activeOrDndUsers);
         logger.info("new websocket connection");
 
 

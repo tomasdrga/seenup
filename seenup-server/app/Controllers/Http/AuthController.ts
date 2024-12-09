@@ -20,6 +20,8 @@ export default class AuthController {
         const email = request.input('email')
         const password = request.input('password')
 
+        auth.user!.status = 'active';
+
         return auth.use('api').attempt(email, password)
     }
 
@@ -28,8 +30,7 @@ export default class AuthController {
     }
 
     async me({ auth }: HttpContextContract) {
-        await auth.user!.load('channels')
-        auth.user!.status = 'active'
+        await auth.user!.load('channels');
         return auth.user
     }
 }
