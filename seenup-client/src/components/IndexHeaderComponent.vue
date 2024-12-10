@@ -58,21 +58,21 @@
                   <q-item-section class="text-right">Status</q-item-section>
                   <q-menu anchor="top end" self="top start" class="text-primary">
                     <q-list>
-                      <q-item dense clickable @click="$emit('change-status', 'Active')">
+                      <q-item dense clickable @click="changeStatus('active')">
                         <q-item-section>
                           <q-item-label>
                             <q-icon name="radio_button_checked" color="green" class="q-pr-sm"></q-icon>Active
                           </q-item-label>
                         </q-item-section>
                       </q-item>
-                      <q-item dense clickable @click="$emit('change-status', 'Do not disturb')">
+                      <q-item dense clickable @click="changeStatus('dnd')">
                         <q-item-section>
                           <q-item-label>
                             <q-icon name="nightlight" color="primary" class="q-pr-sm"></q-icon>Do not disturb
                           </q-item-label>
                         </q-item-section>
                       </q-item>
-                      <q-item dense clickable @click="$emit('change-status', 'Offline')">
+                      <q-item dense clickable @click="changeStatus('active')">
                         <q-item-section>
                           <q-item-label>
                             <q-icon name="radio_button_unchecked" color="grey-6" class="q-pr-sm"></q-icon>Offline
@@ -129,7 +129,7 @@
 
         const userStatusText = computed(() => userStatus.value.text);
 
-  
+
           const logout = async () => {
             await authStore.logout();
           };
@@ -141,7 +141,7 @@
               console.error('Failed to change status:', error);
             }
           };
-           
+
 
             return {
                 $q,
