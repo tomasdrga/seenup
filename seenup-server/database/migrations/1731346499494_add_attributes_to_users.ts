@@ -8,7 +8,7 @@ export default class extends BaseSchema {
       table.string("nickname").unique();
       table.string("first_name")
       table.string("last_name")
-      table.enum('status', ['active', 'offline', 'dnd']).notNullable().defaultTo('offline')
+      table.enum('status', ['active', 'offline', 'dnd']).notNullable().defaultTo('active')
     })
   }
 

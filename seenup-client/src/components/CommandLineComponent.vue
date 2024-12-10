@@ -117,7 +117,6 @@
     return channel && channel.users ? channel.users.map(user => ({ nickname: typeof user === 'string' ? user : user || 'Unknown' })) : [];
   });
 
-
   const isDialogVisible = ref(false);
 
   const showTyping = () => {
@@ -131,7 +130,7 @@
   if (!messageContent) {
     return;
   }
-  
+
   editor.value = ''; // Clear the editor before executing the command or message
   loading.value = true;
   if (!activeChannel.value) {
@@ -230,7 +229,7 @@
   });
 
   const draftMessages = computed(() => activeChannel.value ? channelsStore.draftMessages[activeChannel.value] || {} : {});
-    
+
   const sendTypingEvent = () => {
     if (activeChannel.value) {
       const channelManager = ChannelService.in(activeChannel.value);
